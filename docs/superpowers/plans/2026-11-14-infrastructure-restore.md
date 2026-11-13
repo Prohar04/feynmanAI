@@ -460,6 +460,8 @@ Render dashboard → `fynman-api` → **Environment**:
 
 Save, which redeploys.
 
+**`EMAIL_FROM` is mandatory here, not optional.** `sendMail.ts` prefers it and falls back to `EMAIL_USER`. With Resend, `EMAIL_USER` is the literal string `resend`, which is not an address — leaving `EMAIL_FROM` blank produces an invalid From header and Resend rejects the message. The address must also be on the domain verified in Step 2.
+
 - [ ] **Step 6 [CLAUDE]: Confirm the redeploy went live**
 
 Call `list_deploys` with `limit: 2`. Expected: newest deploy `"status":"live"`.
