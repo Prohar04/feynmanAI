@@ -63,6 +63,77 @@ services:
       - key: ENABLE_FINAL_EVALUATION
         value: true
 
+
+      # --- AI providers, vector DB and storage ---
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: GROQ_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: REALTIME_MODEL
+        value: google/gemini-2.5-flash
+      - key: FINAL_EVALUATION_MODEL
+        value: anthropic/claude-sonnet-4
+      - key: HELPER_MODEL
+        value: meta-llama/llama-3.3-70b-versatile
+      - key: EMBEDDING_PROVIDER
+        value: openai
+      - key: EMBEDDING_MODEL
+        value: openai/text-embedding-3-small
+      - key: EMBEDDING_MODEL_ENDPOINT
+        value: https://openrouter.ai/api/v1/embeddings
+      - key: STT_PROVIDER
+        value: groq
+      - key: STT_MODEL
+        value: whisper-large-v3-turbo
+      - key: STORAGE_PROVIDER
+        value: s3
+      - key: S3_FORCE_PATH_STYLE
+        value: true
+      - key: BULLMQ_PREFIX
+        value: FeynmanAI
+      - key: LOG_LEVEL
+        value: info
+      - key: UPLOAD_DIR
+        value: ./uploads
+      - key: MAX_FILE_SIZE_MB
+        value: 25
+      - key: SESSION_TIMEOUT_MINUTES
+        value: 120
+      - key: MAX_TRANSCRIPT_CHUNKS
+        value: 500
+      - key: REDIS_DEFAULT_EXPIRATION
+        value: 1296000
+      - key: ENABLE_ANALYTICS
+        value: false
+      - key: LLM_ANALYSIS_INTERVAL
+        value: 30
+
+      # Entered in the Render dashboard
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: WHISPER_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+
       # Set these in the Render dashboard (not stored in git)
       # Set once the new frontend is deployed (sub-project 1).
       # Drives CORS and the Socket.IO origin allowlist.
@@ -76,8 +147,6 @@ services:
       # Set after the service URL is known (Task 5), then changed to
       # https://api.fynmanai.com/api/auth/google/callback in Task 8.
       - key: GOOGLE_CALLBACK_URL
-        sync: false
-      - key: OPEN_ROUTER_APIKEY
         sync: false
       - key: ARCJET_KEY
         sync: false
