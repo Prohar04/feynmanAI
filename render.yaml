@@ -79,8 +79,6 @@ services:
         sync: false
       - key: OPEN_ROUTER_APIKEY
         sync: false
-      - key: UPLOADTHING_TOKEN
-        sync: false
       - key: ARCJET_KEY
         sync: false
       - key: EMAIL_HOST
