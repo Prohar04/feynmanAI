@@ -1,6 +1,6 @@
-# Fynman AI Server
+# Feynman AI Server
 
-Backend service for the Fynman AI learning-by-teaching platform. It handles
+Backend service for the Feynman AI learning-by-teaching platform. It handles
 real-time audio sessions over WebSockets, speech-to-text, retrieval, and
 evaluation prompts that generate probing questions.
 

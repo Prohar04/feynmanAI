@@ -2,11 +2,11 @@
 
 **Date:** 2026-11-14
 **Status:** Approved
-**Sub-project:** 0 of 4 (Fynman AI rebuild)
+**Sub-project:** 0 of 4 (Feynman AI rebuild)
 
 ## Context
 
-All deployed infrastructure for Fynman AI was torn down in November 2026:
+All deployed infrastructure for Feynman AI was torn down in November 2026:
 
 - The free Render Postgres expired 30 days after creation and was deleted, taking all data with it.
 - The Vercel project was deleted.
@@ -125,7 +125,7 @@ Checked through the Render connector and HTTP, not by asking the user to inspect
 - **Free Key Value forces `volatile-lru`.** This overrides the `noeviction` policy BullMQ expects, so queued jobs can be dropped under memory pressure. Observed in the previous deployment's logs. Accepted at current scale; revisit if audio jobs go missing.
 - **The free API instance sleeps after 15 minutes idle.** Cold start is roughly one minute and will drop a live Socket.IO speaking session. Acceptable during development; upgrade before demonstrating the app to others.
 - **`fynmanai.com` may be unavailable.** Availability has not been verified. Fallbacks: `fynmanai.study` or `fynman.ai`. Nothing should be branded until the domain is owned.
-- **The project name omits the "e" in Fynman.** Deliberate or not, buying the domain locks the spelling in across URLs, email addresses and branding.
+- **The project name omits the "e" in Feynman.** Deliberate or not, buying the domain locks the spelling in across URLs, email addresses and branding.
 
 ## Rollback
 

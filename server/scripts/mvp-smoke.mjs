@@ -4,9 +4,9 @@ const baseUrl = (
   process.env.MVP_API_BASE_URL || 'http://localhost:8000'
 ).replace(/\/+$/, '');
 const timestamp = Date.now();
-const email = process.env.MVP_EMAIL || `fynman-smoke+${timestamp}@example.com`;
+const email = process.env.MVP_EMAIL || `feynman-smoke+${timestamp}@example.com`;
 const password = process.env.MVP_PASSWORD || 'SmokeTest1!';
-const name = process.env.MVP_NAME || 'Fynman Smoke';
+const name = process.env.MVP_NAME || 'Feynman Smoke';
 
 const demoResourceText =
   process.env.MVP_RESOURCE_TEXT ||

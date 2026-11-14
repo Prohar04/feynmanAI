@@ -23,11 +23,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "FymenAI",
   description:
-    "AI tutoring sessions grounded in your own material, built on the Fynman technique.",
+    "AI tutoring sessions grounded in your own material, built on the Feynman technique.",
   openGraph: {
     title: "FymenAI",
     description:
-      "AI tutoring sessions grounded in your own material, built on the Fynman technique.",
+      "AI tutoring sessions grounded in your own material, built on the Feynman technique.",
     images: ["/fymen-herobg.png"],
   },
 };

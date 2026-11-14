@@ -24,7 +24,7 @@ const requireQdrantUrl = (): string => {
 };
 
 export const getQdrantCollection = (): string =>
-  env.QDRANT_COLLECTION || 'fynman_resources';
+  env.QDRANT_COLLECTION || 'feynman_resources';
 
 const qdrantHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {

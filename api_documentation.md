@@ -1,6 +1,6 @@
-# Fynman AI API Documentation
+# Feynman AI API Documentation
 
-This document describes the REST API exposed by the Fynman AI server.
+This document describes the REST API exposed by the Feynman AI server.
 
 Default local base URL:
 
@@ -1550,7 +1550,7 @@ JSON success `200`:
 Headers:
 
 ```http
-Content-Disposition: attachment; filename="fynman-session-<sessionId>-report.json"
+Content-Disposition: attachment; filename="feynman-session-<sessionId>-report.json"
 ```
 
 ```json
@@ -1588,7 +1588,7 @@ Headers:
 
 ```http
 Content-Type: text/markdown; charset=utf-8
-Content-Disposition: attachment; filename="fynman-session-<sessionId>-report.md"
+Content-Disposition: attachment; filename="feynman-session-<sessionId>-report.md"
 ```
 
 Response body is Markdown text, not the JSON envelope.

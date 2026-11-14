@@ -70,7 +70,7 @@ const fetchWithTimeout = async (url: string) => {
       signal: controller.signal,
       redirect: 'follow',
       headers: {
-        'User-Agent': 'FynmanAI/1.0 (+https://example.com)',
+        'User-Agent': 'FeynmanAI/1.0 (+https://example.com)',
       },
     });
   } finally {

@@ -1,8 +1,8 @@
-# Fynman AI
+# Feynman AI
 
 An AI-powered learning platform where you learn by **teaching**.
 
-Instead of explaining concepts to you, Fynman AI makes *you* explain them out loud. It listens, transcribes your speech in real time, retrieves relevant context from the material you uploaded, and asks probing follow-up questions to find the gaps in your understanding — then grades how well you actually know the topic.
+Instead of explaining concepts to you, Feynman AI makes *you* explain them out loud. It listens, transcribes your speech in real time, retrieves relevant context from the material you uploaded, and asks probing follow-up questions to find the gaps in your understanding — then grades how well you actually know the topic.
 
 It is deliberately **not** a general-purpose chatbot. Its job is to evaluate understanding, probe reasoning, and surface conceptual gaps.
 
