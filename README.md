@@ -10,8 +10,8 @@ It is deliberately **not** a general-purpose chatbot. Its job is to evaluate und
 
 | | URL |
 |---|---|
-| Web app | https://feynman-ai-six.vercel.app |
-| API | https://feynman-api.onrender.com |
+| Web app | not deployed — being rebuilt |
+| API | https://feynman-api-dmzt.onrender.com |
 
 ## The core loop
 
@@ -107,7 +107,7 @@ The frontend needs `BACKEND_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_WS_UR
 Authorized redirect URIs:
 
 ```
-https://feynman-api.onrender.com/api/auth/google/callback
+https://feynman-api-dmzt.onrender.com/api/auth/google/callback
 http://localhost:8000/api/auth/google/callback
 ```
 
@@ -138,7 +138,6 @@ Full reference: [`api_documentation.md`](api_documentation.md).
 These come from running on free tiers and are worth knowing before putting real users on it:
 
 - **The API sleeps after 15 minutes idle.** Cold start is roughly a minute, which drops live Socket.IO speaking sessions. An external uptime ping keeps it awake, but a free web service running 24/7 consumes nearly the entire 750 shared instance-hours per month.
-- **Free Render Postgres is deleted 30 days after creation.** Upgrade before then or the data is gone.
 - **Sessions are stored in memory.** They don't survive a restart, so every deploy logs users out. Redis is already provisioned and would be the natural fix.
 - **Free Key Value forces `volatile-lru`**, not the `noeviction` policy BullMQ wants, so queued jobs can be evicted under memory pressure.
 - **`/health` is slow.** It fans out to seven dependency checks in parallel, which exceeds its 8-second ceiling on a 0.1-CPU instance. Render's health check therefore points at `/` instead.

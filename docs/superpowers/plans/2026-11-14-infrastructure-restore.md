@@ -92,7 +92,7 @@ Replace:
 
 ```yaml
       - key: GOOGLE_CALLBACK_URL
-        value: https://feynman-api.onrender.com/api/auth/google/callback
+        value: https://feynman-api-dmzt.onrender.com/api/auth/google/callback
 ```
 
 with:
