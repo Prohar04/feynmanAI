@@ -1,4 +1,4 @@
-# Render Blueprint for Feynman AI
+# Render Blueprint for Fynman AI
 # The backend container runs migrations, the API and the BullMQ worker
 # together via server/scripts/docker-start.sh, so one web service is enough.
 
@@ -92,7 +92,7 @@ services:
       - key: S3_FORCE_PATH_STYLE
         value: true
       - key: BULLMQ_PREFIX
-        value: FeynmanAI
+        value: FynmanAI
       - key: LOG_LEVEL
         value: info
       - key: UPLOAD_DIR

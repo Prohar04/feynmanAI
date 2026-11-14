@@ -1,13 +1,13 @@
-# Feynman AI — Complete UI Design Prompt (v2)
+# Fynman AI — Complete UI Design Prompt (v2)
 ### Full-Stack Visual Design with Doctor Strange Portal, Animated Pages & Unique Identity
 
-> Hand this entire document to Claude or any design AI to generate high-fidelity PNG mockups for every page of Feynman AI. Each mockup should be 1440×900 at 2× retina resolution. Annotate all animation behaviors inline.
+> Hand this entire document to Claude or any design AI to generate high-fidelity PNG mockups for every page of Fynman AI. Each mockup should be 1440×900 at 2× retina resolution. Annotate all animation behaviors inline.
 
 ---
 
 ## 0. The Brief
 
-**Feynman AI** is an elite AI-powered learning platform. The user learns by *teaching* — they speak, the AI probes, gaps are found, mastery is measured. It is not an EdTech toy. It is a **cognitive operating system**.
+**Fynman AI** is an elite AI-powered learning platform. The user learns by *teaching* — they speak, the AI probes, gaps are found, mastery is measured. It is not an EdTech toy. It is a **cognitive operating system**.
 
 The design language must be **extraordinary, unprecedented, and alive**. Every page animates. Every interaction has weight. Nothing looks like any existing product. Think: if Christopher Nolan and a NASA interaction designer co-directed a web app.
 
@@ -28,14 +28,14 @@ The logo is not a wordmark. It is a **living sigil**.
 - On hover/load: the three strokes **draw themselves** in sequence (stroke-dashoffset animation, 0.6s each, staggered 0.15s)
 
 **Wordmark:**
-- Text: `feynman` (all lowercase)
+- Text: `fynman` (all lowercase)
 - Font: geometric mono, weight 300, letter-spacing `0.18em`
 - Color: `#e7e0ed` at 90% opacity
 - Placed to the right of the ψ mark, vertically centered
-- `AI` suffix: weight 700, `#c0c1ff`, same size — creating `feynman**AI**`
+- `AI` suffix: weight 700, `#c0c1ff`, same size — creating `fynman**AI**`
 
 **Logo variants:**
-- Full (ψ + feynmanAI): Navigation, loading screens
+- Full (ψ + fynmanAI): Navigation, loading screens
 - Mark only (ψ): Favicon, avatar, loading spinner
 - Inverted (white on dark): Footer
 
@@ -106,7 +106,7 @@ Every page obeys these rules:
 
 The landing page has **four acts**:
 1. **The Portal** — Hero section with Doctor Strange dimensional rift
-2. **The Subjects** — Scrolling section: topics + how Feynman AI helps each
+2. **The Subjects** — Scrolling section: topics + how Fynman AI helps each
 3. **The Voice** — Voice assistant animation showcase
 4. **The Footer**
 
@@ -118,7 +118,7 @@ The TopNav floats over all sections.
 
 - Height: 60px
 - Background: `rgba(6, 4, 16, 0.7)` + `backdrop-filter: blur(24px) saturate(180%)`
-- Left: feynmanAI logo (full variant)
+- Left: fynmanAI logo (full variant)
 - Center (desktop only): Ghost nav links — `[Method]` `[Subjects]` `[Pricing]` `[Research]`
 - Right: `[Sign In]` (ghost, 14px) + `[Start Free →]` (violet pill button, 14px bold)
 - Bottom border: `1px solid rgba(255,255,255,0.05)`
@@ -379,10 +379,10 @@ After the 8 cards: a full-width `1440px` panel.
 **Layout:** 1440px wide, 4-column grid.
 
 **Column 1 (wider, 35%):**
-- Full logo (ψ feynmanAI)
+- Full logo (ψ fynmanAI)
 - Tagline: *"You don't just learn. You architect understanding."* (14px, `--text-dim`, italic)
 - Social links: Twitter/X · GitHub · LinkedIn (icon buttons, 36px, ghost style)
-- Copyright (mono, 11px, `--text-ghost`): `© 2026 FEYNMAN AI — ALL RIGHTS RESERVED`
+- Copyright (mono, 11px, `--text-ghost`): `© 2026 FYNMAN AI — ALL RIGHTS RESERVED`
 
 **Columns 2–4:**
 - Col 2: `PRODUCT` — Method · Pricing · Changelog · Open Beta
@@ -411,7 +411,7 @@ After the 8 cards: a full-width `1440px` panel.
   > *"The first principle is that you must not fool yourself — and you are the easiest person to fool."*
   > — Richard Feynman
   (32px, weight 200, `--text-dim`, max-width 400px)
-- Bottom-left: mono system label `FEYNMAN AI · COGNITIVE WORKSPACE`
+- Bottom-left: mono system label `FYNMAN AI · COGNITIVE WORKSPACE`
 
 **Right Panel:**
 - Background: `--raised` (`#110f1e`)
@@ -510,7 +510,7 @@ After the 8 cards: a full-width `1440px` panel.
 **App Shell:**
 - **Top nav (56px):** ψ logo left · `Dashboard` breadcrumb center (with `/ Sessions / New Session` trail support) · right: `🔔` bell (dot badge if notification) + avatar circle (32px, initials or photo) + chevron dropdown
 - **Left sidebar (260px, fixed):**
-  - Brand header: ψ mark + `feynmanAI` (12px mono, `--text-ghost`)
+  - Brand header: ψ mark + `fynmanAI` (12px mono, `--text-ghost`)
   - Nav items (icon + label, 44px height each):
     - `◎ Dashboard` (active: left violet bar `3px`, background `rgba(192,193,255,0.06)`)
     - `⬡ Sessions`
@@ -857,11 +857,11 @@ This product should make the user feel like they are operating **cognitive infra
 
 The portal is not a gimmick. It is a metaphor made literal: through this rift, knowledge flows out and demands to be explained back in. Every subject orbiting the portal is a universe waiting to be entered. The AI inside is not a chatbot — it is a sentinel at the gate of understanding.
 
-The person who sits down to use Feynman AI should feel slightly intimidated, deeply curious, and certain that this tool will make them smarter.
+The person who sits down to use Fynman AI should feel slightly intimidated, deeply curious, and certain that this tool will make them smarter.
 
 If the design looks like Duolingo, it has failed.
 If it looks like something from a parallel universe where learning never became lazy — it has succeeded.
 
 ---
 
-*Feynman AI · proharsaha@raktch.com · June 2026 · Build 2.0*
+*Fynman AI · proharsaha@raktch.com · June 2026 · Build 2.0*

@@ -1,5 +1,5 @@
 {
-  "name": "feynmanai-server",
+  "name": "fynmanai-server",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -105,5 +105,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "Backend for Feynman AI with WebSocket sessions, STT, retrieval, and evaluation."
+  "description": "Backend for Fynman AI with WebSocket sessions, STT, retrieval, and evaluation."
 }

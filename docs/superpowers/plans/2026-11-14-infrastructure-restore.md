@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Restore a working deployed Feynman AI backend on infrastructure that does not expire, then attach the `fynmanai.com` domain and project email.
+**Goal:** Restore a working deployed Fynman AI backend on infrastructure that does not expire, then attach the `fynmanai.com` domain and project email.
 
 **Architecture:** The Render Blueprint stops owning the database. Postgres moves to Neon (no expiry); Render keeps the Docker web service and the Key Value instance. Secrets that used to be hardcoded or blueprint-managed become `sync: false` so they are entered in the dashboard. Phase 0a delivers a working API; phase 0b layers on DNS and email.
 
@@ -333,7 +333,7 @@ Blocked until the domain is purchased. Phase 0a is fully usable without it.
 
 Search for `fynmanai.com` at any registrar. If taken, the spec's fallbacks are `fynmanai.study` or `fynman.ai`. **Do not proceed with a name you do not own** — every later task hardcodes it.
 
-Before buying, settle the spelling. The project omits the "e" from *Feynman*. Buying locks that into URLs, email addresses and branding.
+Before buying, settle the spelling. The project omits the "e" from *Fynman*. Buying locks that into URLs, email addresses and branding.
 
 - [ ] **Step 2: Buy it**
 

@@ -17,7 +17,7 @@ import {
  *
  * EMAIL_FROM is therefore preferred, falling back to EMAIL_USER so
  * existing Gmail-style configurations keep working unchanged. It accepts
- * a bare address or a display form: "Feynman AI" <noreply@example.com>
+ * a bare address or a display form: "Fynman AI" <noreply@example.com>
  */
 const getFromAddress = (): string | undefined =>
   process.env.EMAIL_FROM || process.env.EMAIL_USER;

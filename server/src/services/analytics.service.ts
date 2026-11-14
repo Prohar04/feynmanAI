@@ -569,7 +569,7 @@ export const formatEvaluationExportMarkdown = (exportData: NonNullable<
   Awaited<ReturnType<typeof getFinalEvaluationExport>>
 >): string => {
   if (!exportData.report) {
-    return '# Feynman AI Evaluation Report\n\nFinal evaluation not available.\n';
+    return '# Fynman AI Evaluation Report\n\nFinal evaluation not available.\n';
   }
 
   const report = exportData.report;
@@ -578,7 +578,7 @@ export const formatEvaluationExportMarkdown = (exportData: NonNullable<
     items.length ? items.map(item => `- ${item}`).join('\n') : '- None recorded';
 
   return [
-    '# Feynman AI Evaluation Report',
+    '# Fynman AI Evaluation Report',
     '',
     `Session: ${session.id}`,
     `Subject: ${session.subject || 'Unspecified'}`,

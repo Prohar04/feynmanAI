@@ -14,7 +14,7 @@ const steps = [
     icon: "hub",
     title: "03. EXPLAIN IT BACK",
     description:
-      "It asks Feynman-style questions and checks your answer against the source material.",
+      "It asks Fynman-style questions and checks your answer against the source material.",
   },
   {
     icon: "layers",

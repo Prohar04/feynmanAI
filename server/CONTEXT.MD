@@ -2,7 +2,7 @@
 
 # Project Name
 
-Feynman AI
+Fynman AI
 
 ---
 

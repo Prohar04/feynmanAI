@@ -1,4 +1,4 @@
-# Feynman AI Server MVP Task Plan
+# Fynman AI Server MVP Task Plan
 
 This plan is based on `server/CONTEXT.MD`. The MVP server should prove the core product loop:
 

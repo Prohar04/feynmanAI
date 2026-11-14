@@ -36,7 +36,7 @@ export default function HeroSection() {
         {/* Content */}
         <div className="relative z-10 pt-10">
           <span className="font-label-mono text-label-mono text-[10px] md:text-base uppercase tracking-[0.2em] text-[#c0c1ff] mb-6 block">
-            ↳ Built on the Feynman technique
+            ↳ Built on the Fynman technique
           </span>
 
            <h1 className="font-display-lg text-[2rem] leading-tight md:text-[84px] md:leading-none mb-8 max-w-5xl">

@@ -140,14 +140,14 @@ export const exportFinalEvaluationHandler = async (
       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="feynman-session-${sessionId}-report.md"`
+        `attachment; filename="fynman-session-${sessionId}-report.md"`
       );
       return res.status(200).send(formatEvaluationExportMarkdown(exportData));
     }
 
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="feynman-session-${sessionId}-report.json"`
+      `attachment; filename="fynman-session-${sessionId}-report.json"`
     );
     return sendApiSuccess(res, { data: { export: exportData } });
   } catch (error) {
