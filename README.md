@@ -11,7 +11,7 @@ It is deliberately **not** a general-purpose chatbot. Its job is to evaluate und
 | | URL |
 |---|---|
 | Web app | not deployed — being rebuilt |
-| API | https://feynman-api-dmzt.onrender.com |
+| API | https://api.feynmanai.tech |
 
 ## The core loop
 

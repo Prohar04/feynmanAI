@@ -2,13 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Restore a working deployed Feynman AI backend on infrastructure that does not expire, then attach the `feynmanai.com` domain and project email.
+**Goal:** Restore a working deployed Feynman AI backend on infrastructure that does not expire, then attach the `feynmanai.tech` domain and project email.
 
 **Architecture:** The Render Blueprint stops owning the database. Postgres moves to Neon (no expiry); Render keeps the Docker web service and the Key Value instance. Secrets that used to be hardcoded or blueprint-managed become `sync: false` so they are entered in the dashboard. Phase 0a delivers a working API; phase 0b layers on DNS and email.
 
 **Tech Stack:** Render Blueprint (`render.yaml`), Neon Postgres, Render Key Value (Redis), Prisma migrations, Cloudflare DNS + Email Routing, Resend.
 
 **Spec:** `docs/superpowers/specs/2026-11-14-infrastructure-restore-design.md`
+
+> **Status (2026-11-14):** the domain is `feynmanai.tech`, with DNS on Cloudflare. Verified from public DNS: Cloudflare Email Routing MX, the Resend DKIM record, the Resend return-path records, and `api.feynmanai.tech` serving the API (HTTP 200). **Not verified from outside:** whether Render's `EMAIL_*` and `GOOGLE_CALLBACK_URL` are set, and whether a DMARC record exists (none was found).
 
 ---
 
@@ -99,7 +101,7 @@ with:
 
 ```yaml
       # Set after the service URL is known (Task 5), then changed to
-      # https://api.feynmanai.com/api/auth/google/callback in Task 8.
+      # https://api.feynmanai.tech/api/auth/google/callback in Task 8.
       - key: GOOGLE_CALLBACK_URL
         sync: false
 ```
@@ -331,7 +333,7 @@ Blocked until the domain is purchased. Phase 0a is fully usable without it.
 
 - [ ] **Step 1: Check availability**
 
-Search for `feynmanai.com` at any registrar. If taken, the spec's fallbacks are `feynmanai.study` or `feynman.ai`. **Do not proceed with a name you do not own** — every later task hardcodes it.
+**Done:** `feynmanai.tech` was registered through the GitHub Student Developer Pack (free for one year, then it renews at the normal price). The original target, `feynmanai.tech`, was never bought. **Do not proceed with a name you do not own** — every later task hardcodes it.
 
 Before buying, settle the spelling. The project omits the "e" from *Feynman*. Buying locks that into URLs, email addresses and branding.
 
@@ -349,11 +351,11 @@ Cloudflare shows "Active" when the nameservers have propagated — usually minut
 
 ---
 
-## Task 7: Point `api.feynmanai.com` at Render [USER + CLAUDE]
+## Task 7: Point `api.feynmanai.tech` at Render [USER + CLAUDE]
 
 - [ ] **Step 1 [USER]: Add the custom domain in Render**
 
-Render dashboard → `feynman-api` → **Settings → Custom Domains** → **Add Custom Domain** → `api.feynmanai.com`. Render displays a CNAME target such as `feynman-api.onrender.com`. Copy it.
+Render dashboard → `feynman-api` → **Settings → Custom Domains** → **Add Custom Domain** → `api.feynmanai.tech`. Render displays a CNAME target such as `feynman-api.onrender.com`. Copy it.
 
 - [ ] **Step 2 [USER]: Create the DNS record in Cloudflare**
 
@@ -376,13 +378,13 @@ Render's Custom Domains panel shows the domain as verified with a certificate is
 - [ ] **Step 4 [CLAUDE]: Verify the subdomain serves the API**
 
 ```bash
-curl -s -o /dev/null -w "api.feynmanai.com  HTTP %{http_code}\n" --max-time 60 https://api.feynmanai.com/ && curl -s --max-time 60 https://api.feynmanai.com/api
+curl -s -o /dev/null -w "api.feynmanai.tech  HTTP %{http_code}\n" --max-time 60 https://api.feynmanai.tech/ && curl -s --max-time 60 https://api.feynmanai.tech/api
 ```
 
 Expected output:
 
 ```
-api.feynmanai.com  HTTP 200
+api.feynmanai.tech  HTTP 200
 {"success":true,"message":"Tryora API is running!"}
 ```
 
@@ -395,7 +397,7 @@ api.feynmanai.com  HTTP 200
 Render dashboard → `feynman-api` → **Environment** → set:
 
 ```
-GOOGLE_CALLBACK_URL = https://api.feynmanai.com/api/auth/google/callback
+GOOGLE_CALLBACK_URL = https://api.feynmanai.tech/api/auth/google/callback
 ```
 
 Save. This triggers a redeploy.
@@ -419,15 +421,15 @@ Two independent concerns. Receiving is Cloudflare; sending is Resend.
 Cloudflare → your domain → **Email → Email Routing** → **Get started**. Cloudflare adds the required MX records automatically. Create two addresses, each forwarding to a mailbox you already read:
 
 ```
-info@feynmanai.com     → <your existing mailbox>
-service@feynmanai.com  → <your existing mailbox>
+info@feynmanai.tech     → <your existing mailbox>
+service@feynmanai.tech  → <your existing mailbox>
 ```
 
 Verify the destination address via the confirmation email Cloudflare sends, or forwarding silently fails.
 
 - [ ] **Step 2 [USER]: Add the domain in Resend**
 
-https://resend.com → sign up → **Domains → Add Domain** → `feynmanai.com`. Resend displays DNS records to add: a DKIM `TXT`, an SPF `TXT`, and optionally a DMARC `TXT`.
+https://resend.com → sign up → **Domains → Add Domain** → `feynmanai.tech`. Resend displays DNS records to add: a DKIM `TXT`, an SPF `TXT`, and optionally a DMARC `TXT`.
 
 - [ ] **Step 3 [USER]: Add Resend's records in Cloudflare**
 
@@ -456,7 +458,7 @@ Render dashboard → `feynman-api` → **Environment**:
 | `EMAIL_SECURE` | `true` |
 | `EMAIL_USER` | `resend` |
 | `EMAIL_PASS` | the API key from Step 4 |
-| `EMAIL_FROM` | `noreply@feynmanai.com` |
+| `EMAIL_FROM` | `noreply@feynmanai.tech` |
 
 Save, which redeploys.
 
@@ -479,14 +481,14 @@ Register a new account on the deployed app using an address you control, and con
 
 - [ ] **Step 1: Update the Live URLs**
 
-Replace the Live table's URLs with the real ones: the frontend row stays as "not yet deployed (sub-project 1)", and the API row becomes `https://api.feynmanai.com`.
+Replace the Live table's URLs with the real ones: the frontend row stays as "not yet deployed (sub-project 1)", and the API row becomes `https://api.feynmanai.tech`.
 
 - [ ] **Step 2: Update the Google OAuth redirect URIs**
 
 Replace the `onrender.com` URI with:
 
 ```
-https://api.feynmanai.com/api/auth/google/callback
+https://api.feynmanai.tech/api/auth/google/callback
 http://localhost:8000/api/auth/google/callback
 ```
 
@@ -497,7 +499,7 @@ The README claims the free Postgres is deleted after 30 days. That no longer app
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/prohorsaha/feynmanAI && git add README.md && git commit -m "Update README for Neon database and feynmanai.com domain" && git push origin main
+cd /Users/prohorsaha/feynmanAI && git add README.md && git commit -m "Update README for Neon database and feynmanai.tech domain" && git push origin main
 ```
 
 ---
@@ -505,9 +507,9 @@ cd /Users/prohorsaha/feynmanAI && git add README.md && git commit -m "Update REA
 ## Done when
 
 - `list_services` shows `feynman-api` with a `live` deploy.
-- `https://api.feynmanai.com/` returns 200 and `/api` returns the JSON success body.
+- `https://api.feynmanai.tech/` returns 200 and `/api` returns the JSON success body.
 - Logs show migrations applied, the server listening, Redis connected, and both BullMQ workers running.
-- Mail to `info@feynmanai.com` reaches your mailbox.
+- Mail to `info@feynmanai.tech` reaches your mailbox.
 - A registration email from the app arrives with `spf=pass` and `dkim=pass`.
 
 ## Not included

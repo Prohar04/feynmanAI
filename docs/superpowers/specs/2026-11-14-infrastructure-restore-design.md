@@ -18,7 +18,7 @@ The repository, the Express/Socket.IO backend, the Prisma schema and its four mi
 
 Restore a working deployed backend — API, database, queue — on infrastructure that does not delete itself, so the new frontend has a real API to build against.
 
-Add the production domain `feynmanai.com` and project email addresses.
+Add the production domain `feynmanai.tech` and project email addresses.
 
 ## Out of scope
 
@@ -34,7 +34,7 @@ Add the production domain `feynmanai.com` and project email addresses.
 | Database | Neon Postgres (free) | Does not expire, unlike Render's free tier. Prisma needs no code change. |
 | API host | Render web service (free) | `render.yaml` already works. Sleeps when idle, which is acceptable while building. |
 | Queue / cache | Render Key Value (free) | BullMQ needs Redis; the blueprint already wires it. |
-| Domain | `feynmanai.com` | Not yet purchased. |
+| Domain | `feynmanai.tech` | Not yet purchased. |
 | DNS | Cloudflare | Free, and required for the email routing below. |
 | Inbox email | Cloudflare Email Routing (free) | Forwards `info@` and `service@` to an existing mailbox. |
 | App email | Resend (free tier) | Sends verification and password-reset mail with proper SPF/DKIM. |
@@ -48,7 +48,7 @@ Delivers a working API with a persistent database.
 1. Remove the `databases:` block. Render no longer owns the database.
 2. Change `DATABASE_URL` from a `fromDatabase:` reference to `sync: false`, so the value is entered in the Render dashboard and the blueprint stops overwriting it.
 3. Change `FRONTEND_URL` to `sync: false`. It is currently hardcoded to `https://feynman-ai-six.vercel.app`, a deleted project that now 404s. This value drives both the CORS allowlist and the Socket.IO origin check in `server/src/server.ts`, so a stale value blocks the real frontend. It is set once sub-project 1 deploys. Local development is unaffected: `server.ts` already allows `localhost:3000`, `3001` and `5173` unconditionally.
-4. Change `GOOGLE_CALLBACK_URL` to `sync: false`. It is currently hardcoded to the deleted service's hostname. The new service may receive a different hostname, since Render appends a suffix when a name is already taken. Set it after the service URL is known in 0a, then change it to `https://api.feynmanai.com/api/auth/google/callback` in 0b.
+4. Change `GOOGLE_CALLBACK_URL` to `sync: false`. It is currently hardcoded to the deleted service's hostname. The new service may receive a different hostname, since Render appends a suffix when a name is already taken. Set it after the service URL is known in 0a, then change it to `https://api.feynmanai.tech/api/auth/google/callback` in 0b.
 5. Leave unchanged: the Key Value service and its `fromService` wiring, the generated `JWT_SECRET` / `REFRESH_JWT_SECRET` / `SESSION_SECRET`, `healthCheckPath: /`, and the `AUDIO_PROCESSING_CONCURRENCY` setting.
 
 ### Steps
@@ -82,21 +82,21 @@ Secret values are entered by the user directly in the Render dashboard and are n
 
 | # | Step | Owner |
 |---|---|---|
-| 1 | Confirm `feynmanai.com` is available and buy it | User |
+| 1 | Confirm `feynmanai.tech` is available and buy it | User |
 | 2 | Move the domain's nameservers to Cloudflare | User |
 | 3 | Produce the exact DNS record list | Claude |
 | 4 | Add the DNS records | User |
 | 5 | Configure Cloudflare Email Routing for `info@` and `service@` | User |
 | 6 | Verify the domain in Resend; add SPF and DKIM records | Claude (values) / User (paste) |
-| 7 | Update the `EMAIL_*` variables to send as `noreply@feynmanai.com` | Claude |
-| 8 | Point `GOOGLE_CALLBACK_URL` at `https://api.feynmanai.com/...` and add that URI in Google Cloud Console | Claude (value) / User (Console) |
-| 9 | Set `FRONTEND_URL` to `https://feynmanai.com` once the frontend is deployed | Claude |
+| 7 | Update the `EMAIL_*` variables to send as `noreply@feynmanai.tech` | Claude |
+| 8 | Point `GOOGLE_CALLBACK_URL` at `https://api.feynmanai.tech/...` and add that URI in Google Cloud Console | Claude (value) / User (Console) |
+| 9 | Set `FRONTEND_URL` to `https://feynmanai.tech` once the frontend is deployed | Claude |
 
 ### DNS layout
 
 ```
-feynmanai.com          → Vercel   (frontend, added in sub-project 1)
-api.feynmanai.com      → Render   (backend)
+feynmanai.tech          → Vercel   (frontend, added in sub-project 1)
+api.feynmanai.tech      → Render   (backend)
 MX records            → Cloudflare Email Routing
 SPF + DKIM            → Resend
 ```
@@ -107,8 +107,8 @@ The API lives on the `api.` subdomain rather than the root so the frontend can o
 
 Two separate concerns that are often conflated:
 
-- **Receiving** — `info@feynmanai.com` and `service@feynmanai.com` forward to an existing mailbox via Cloudflare Email Routing. No mailbox hosting cost.
-- **Sending** — the application's verification and password-reset mail goes out through Resend as `noreply@feynmanai.com`. Without SPF and DKIM these land in spam, so the DNS records are mandatory, not optional.
+- **Receiving** — `info@feynmanai.tech` and `service@feynmanai.tech` forward to an existing mailbox via Cloudflare Email Routing. No mailbox hosting cost.
+- **Sending** — the application's verification and password-reset mail goes out through Resend as `noreply@feynmanai.tech`. Without SPF and DKIM these land in spam, so the DNS records are mandatory, not optional.
 
 ## Verification
 
@@ -118,13 +118,13 @@ Checked through the Render connector and HTTP, not by asking the user to inspect
 - Logs contain `Database migrations applied` and `API server listening on 0.0.0.0:8000`.
 - `GET /` returns 200 with `Hello from Tryora!`.
 - `GET /api` returns 200 with `{"success":true,...}`.
-- After 0b: `api.feynmanai.com` resolves and returns the same responses, and a Resend test message passes SPF and DKIM.
+- After 0b: `api.feynmanai.tech` resolves and returns the same responses, and a Resend test message passes SPF and DKIM.
 
 ## Accepted risks
 
 - **Free Key Value forces `volatile-lru`.** This overrides the `noeviction` policy BullMQ expects, so queued jobs can be dropped under memory pressure. Observed in the previous deployment's logs. Accepted at current scale; revisit if audio jobs go missing.
 - **The free API instance sleeps after 15 minutes idle.** Cold start is roughly one minute and will drop a live Socket.IO speaking session. Acceptable during development; upgrade before demonstrating the app to others.
-- **`feynmanai.com` may be unavailable.** Availability has not been verified. Fallbacks: `feynmanai.study` or `feynman.ai`. Nothing should be branded until the domain is owned.
+- **The domain is `feynmanai.tech`, free for one year.** It came from the GitHub Student Developer Pack, so it renews at the normal price after that. `feynmanai.tech` was the original target and was never bought.
 - **The project name omits the "e" in Feynman.** Deliberate or not, buying the domain locks the spelling in across URLs, email addresses and branding.
 
 ## Rollback

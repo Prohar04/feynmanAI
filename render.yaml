@@ -145,7 +145,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       # Set after the service URL is known (Task 5), then changed to
-      # https://api.feynmanai.com/api/auth/google/callback in Task 8.
+      # https://api.feynmanai.tech/api/auth/google/callback in Task 8.
       - key: GOOGLE_CALLBACK_URL
         sync: false
       - key: ARCJET_KEY
