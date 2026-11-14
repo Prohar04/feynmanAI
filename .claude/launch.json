@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "feynmanai-frontend",
+      "name": "feynmanai-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "--port", "3100"],
+      "port": 3100
     }
   ]
 }

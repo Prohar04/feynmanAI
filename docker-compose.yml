@@ -71,29 +71,7 @@ services:
       retries: 10
       start_period: 60s
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        BACKEND_URL: http://localhost:8000
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
-        NEXT_PUBLIC_WS_URL: http://localhost:8000
-        NEXT_PUBLIC_WS_PATH: /ws
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      BACKEND_URL: http://backend:8000
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
-      NEXT_PUBLIC_WS_URL: http://localhost:8000
-      NEXT_PUBLIC_WS_PATH: /ws
-      SESSION_SECRET_KEY: ${SESSION_SECRET_KEY:?Set SESSION_SECRET_KEY in the root .env}
+  # The web app (web/) has no container yet; run it with `npm run dev` in web/.
 
 volumes:
   postgres-data:
