@@ -60,6 +60,7 @@ task.md            MVP scope and task plan
 ### With Docker (everything at once)
 
 ```bash
+cp .env.example .env     # fill in the keys; compose won't start with blanks
 docker compose up --build
 ```
 
