@@ -9,13 +9,16 @@ ARG BACKEND_URL=http://localhost:8000
 ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ARG NEXT_PUBLIC_WS_URL=http://localhost:8000
 ARG NEXT_PUBLIC_WS_PATH=/ws
-ARG SESSION_SECRET_KEY=docker-session-secret
 
 ENV BACKEND_URL=${BACKEND_URL}
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 ENV NEXT_PUBLIC_WS_PATH=${NEXT_PUBLIC_WS_PATH}
-ENV SESSION_SECRET_KEY=${SESSION_SECRET_KEY}
+
+# SESSION_SECRET_KEY is deliberately not set here. A build arg or ENV would be
+# baked into the image, and a default would sign cookies with a known value.
+# It is read per request in src/lib/auth/session.ts, which throws if it is
+# missing, so it must be supplied at runtime (docker-compose passes it).
 
 FROM base AS deps
 
@@ -37,7 +40,6 @@ ENV BACKEND_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ENV NEXT_PUBLIC_WS_URL=http://localhost:8000
 ENV NEXT_PUBLIC_WS_PATH=/ws
-ENV SESSION_SECRET_KEY=change-me-session-secret
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
