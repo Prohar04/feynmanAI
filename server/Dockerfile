@@ -2,7 +2,7 @@ FROM oven/bun:latest AS base
 
 WORKDIR /app
 
-ARG DATABASE_URL=postgresql://fynman:fynman@postgres:5432/fynmanai?schema=public
+ARG DATABASE_URL=postgresql://feynman:feynman@postgres:5432/feynmanai?schema=public
 ENV DATABASE_URL=${DATABASE_URL}
 
 RUN apt-get update \

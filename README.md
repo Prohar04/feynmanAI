@@ -10,8 +10,8 @@ It is deliberately **not** a general-purpose chatbot. Its job is to evaluate und
 
 | | URL |
 |---|---|
-| Web app | https://fynman-ai-six.vercel.app |
-| API | https://fynman-api.onrender.com |
+| Web app | https://feynman-ai-six.vercel.app |
+| API | https://feynman-api.onrender.com |
 
 ## The core loop
 
@@ -107,7 +107,7 @@ The frontend needs `BACKEND_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_WS_UR
 Authorized redirect URIs:
 
 ```
-https://fynman-api.onrender.com/api/auth/google/callback
+https://feynman-api.onrender.com/api/auth/google/callback
 http://localhost:8000/api/auth/google/callback
 ```
 

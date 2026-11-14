@@ -3,14 +3,14 @@
 # together via server/scripts/docker-start.sh, so one web service is enough.
 
 services:
-  - name: fynman-redis
+  - name: feynman-redis
     type: keyvalue
     plan: free
     region: oregon
     maxmemoryPolicy: noeviction # BullMQ requires noeviction
-    ipAllowList: [] # internal connections only (from fynman-api)
+    ipAllowList: [] # internal connections only (from feynman-api)
 
-  - name: fynman-api
+  - name: feynman-api
     type: web
     runtime: docker
     plan: free
@@ -32,7 +32,7 @@ services:
 
       - key: REDIS_URL
         fromService:
-          name: fynman-redis
+          name: feynman-redis
           type: keyvalue
           property: connectionString
 
@@ -145,7 +145,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       # Set after the service URL is known (Task 5), then changed to
-      # https://api.fynmanai.com/api/auth/google/callback in Task 8.
+      # https://api.feynmanai.com/api/auth/google/callback in Task 8.
       - key: GOOGLE_CALLBACK_URL
         sync: false
       - key: ARCJET_KEY

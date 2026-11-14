@@ -3,13 +3,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: fynmanai
-      POSTGRES_USER: fynman
-      POSTGRES_PASSWORD: fynman
+      POSTGRES_DB: feynmanai
+      POSTGRES_USER: feynman
+      POSTGRES_PASSWORD: feynman
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fynman -d fynmanai"]
+      test: ["CMD-SHELL", "pg_isready -U feynman -d feynmanai"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -38,7 +38,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8000
-      DATABASE_URL: postgresql://fynman:fynman@postgres:5432/fynmanai?schema=public
+      DATABASE_URL: postgresql://feynman:feynman@postgres:5432/feynmanai?schema=public
       FRONTEND_URL: http://localhost:3000
       APP_URL: http://localhost:3000
       API_URL: http://localhost:8000

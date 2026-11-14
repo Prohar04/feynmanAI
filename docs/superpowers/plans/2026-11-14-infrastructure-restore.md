@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Restore a working deployed Feynman AI backend on infrastructure that does not expire, then attach the `fynmanai.com` domain and project email.
+**Goal:** Restore a working deployed Feynman AI backend on infrastructure that does not expire, then attach the `feynmanai.com` domain and project email.
 
 **Architecture:** The Render Blueprint stops owning the database. Postgres moves to Neon (no expiry); Render keeps the Docker web service and the Key Value instance. Secrets that used to be hardcoded or blueprint-managed become `sync: false` so they are entered in the dashboard. Phase 0a delivers a working API; phase 0b layers on DNS and email.
 
@@ -39,7 +39,7 @@ Delete these lines entirely (currently `render.yaml:5-10`, including the blank l
 
 ```yaml
 databases:
-  - name: fynman-postgres
+  - name: feynman-postgres
     plan: free
     region: oregon
     postgresMajorVersion: "16"
@@ -55,7 +55,7 @@ Replace:
 ```yaml
       - key: DATABASE_URL
         fromDatabase:
-          name: fynman-postgres
+          name: feynman-postgres
           property: connectionString
 ```
 
@@ -73,7 +73,7 @@ Replace:
 
 ```yaml
       - key: FRONTEND_URL
-        value: https://fynman-ai-six.vercel.app
+        value: https://feynman-ai-six.vercel.app
 ```
 
 with:
@@ -92,14 +92,14 @@ Replace:
 
 ```yaml
       - key: GOOGLE_CALLBACK_URL
-        value: https://fynman-api.onrender.com/api/auth/google/callback
+        value: https://feynman-api.onrender.com/api/auth/google/callback
 ```
 
 with:
 
 ```yaml
       # Set after the service URL is known (Task 5), then changed to
-      # https://api.fynmanai.com/api/auth/google/callback in Task 8.
+      # https://api.feynmanai.com/api/auth/google/callback in Task 8.
       - key: GOOGLE_CALLBACK_URL
         sync: false
 ```
@@ -109,11 +109,11 @@ with:
 Run:
 
 ```bash
-cd /Users/prohorsaha/fynmanAI && python3 -c "
+cd /Users/prohorsaha/feynmanAI && python3 -c "
 import yaml
 d = yaml.safe_load(open('render.yaml'))
 assert 'databases' not in d, 'databases block still present'
-svc = [s for s in d['services'] if s['name'] == 'fynman-api'][0]
+svc = [s for s in d['services'] if s['name'] == 'feynman-api'][0]
 env = {e['key']: e for e in svc['envVars']}
 for k in ['DATABASE_URL', 'FRONTEND_URL', 'GOOGLE_CALLBACK_URL']:
     assert env[k].get('sync') is False, f'{k} is not sync:false'
@@ -131,7 +131,7 @@ OK: databases removed; DATABASE_URL, FRONTEND_URL, GOOGLE_CALLBACK_URL are sync:
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/prohorsaha/fynmanAI && git add render.yaml && git commit -m "Move database and environment URLs out of the blueprint
+cd /Users/prohorsaha/feynmanAI && git add render.yaml && git commit -m "Move database and environment URLs out of the blueprint
 
 Render no longer owns the Postgres database; it lives in Neon and the
 connection string is entered in the dashboard. FRONTEND_URL and
@@ -147,7 +147,7 @@ and are set once the new URLs exist." && git push origin main
 
 - [ ] **Step 1: Create the project**
 
-Go to https://console.neon.tech, sign up, and create a project. Name it `fynmanai`. Any region is acceptable; choosing one near Oregon keeps latency to the Render service low.
+Go to https://console.neon.tech, sign up, and create a project. Name it `feynmanai`. Any region is acceptable; choosing one near Oregon keeps latency to the Render service low.
 
 - [ ] **Step 2: Copy the pooled connection string**
 
@@ -171,11 +171,11 @@ Paste it into the Render dashboard in Task 3. Do not paste it into this conversa
 
 - [ ] **Step 1: Create the blueprint**
 
-Go to https://dashboard.render.com → **New → Blueprint** → connect `Prohar04/fynmanAI` → branch `main` → **Deploy Blueprint**.
+Go to https://dashboard.render.com → **New → Blueprint** → connect `Prohar04/feynmanAI` → branch `main` → **Deploy Blueprint**.
 
 - [ ] **Step 2: Fill the prompted environment variables**
 
-Render prompts for every `sync: false` key. Values come from `~/fynmanAI-env-backup/server.env`.
+Render prompts for every `sync: false` key. Values come from `~/feynmanAI-env-backup/server.env`.
 
 | Key | Value | Required? |
 |---|---|---|
@@ -203,7 +203,7 @@ Render prompts for every `sync: false` key. Values come from `~/fynmanAI-env-bac
 
 Call `list_services` with `workspaceId: tea-darbqfp7lnhs73cp7e20`.
 
-Expected: one service named `fynman-api`. Record `serviceDetails.url` — it may **not** be `https://fynman-api.onrender.com`, because Render appends a suffix when a name is taken. Every later task uses the actual value.
+Expected: one service named `feynman-api`. Record `serviceDetails.url` — it may **not** be `https://feynman-api.onrender.com`, because Render appends a suffix when a name is taken. Every later task uses the actual value.
 
 - [ ] **Step 2: Confirm the deploy reached `live`**
 
@@ -272,7 +272,7 @@ Report this exact string to the user.
 
 - [ ] **Step 2 [USER]: Set it in Render**
 
-Render dashboard → `fynman-api` → **Environment** → set `GOOGLE_CALLBACK_URL` to the string from Step 1 → **Save**. Saving triggers a redeploy.
+Render dashboard → `feynman-api` → **Environment** → set `GOOGLE_CALLBACK_URL` to the string from Step 1 → **Save**. Saving triggers a redeploy.
 
 - [ ] **Step 3 [USER]: Register the same URI with Google**
 
@@ -310,7 +310,7 @@ const GOOGLE_CALLBACK_URL =
 - [ ] **Step 6 [CLAUDE]: Type-check and commit**
 
 ```bash
-cd /Users/prohorsaha/fynmanAI/server && npx tsc --noEmit && cd /Users/prohorsaha/fynmanAI && git add server/src/config/google.config.ts && git commit -m "Fix Google callback fallback to include the /api prefix
+cd /Users/prohorsaha/feynmanAI/server && npx tsc --noEmit && cd /Users/prohorsaha/feynmanAI && git add server/src/config/google.config.ts && git commit -m "Fix Google callback fallback to include the /api prefix
 
 The default omitted /api and did not match the route mounted at
 /api/auth/google/callback, breaking local Google sign-in whenever
@@ -331,7 +331,7 @@ Blocked until the domain is purchased. Phase 0a is fully usable without it.
 
 - [ ] **Step 1: Check availability**
 
-Search for `fynmanai.com` at any registrar. If taken, the spec's fallbacks are `fynmanai.study` or `fynman.ai`. **Do not proceed with a name you do not own** — every later task hardcodes it.
+Search for `feynmanai.com` at any registrar. If taken, the spec's fallbacks are `feynmanai.study` or `feynman.ai`. **Do not proceed with a name you do not own** — every later task hardcodes it.
 
 Before buying, settle the spelling. The project omits the "e" from *Feynman*. Buying locks that into URLs, email addresses and branding.
 
@@ -349,11 +349,11 @@ Cloudflare shows "Active" when the nameservers have propagated — usually minut
 
 ---
 
-## Task 7: Point `api.fynmanai.com` at Render [USER + CLAUDE]
+## Task 7: Point `api.feynmanai.com` at Render [USER + CLAUDE]
 
 - [ ] **Step 1 [USER]: Add the custom domain in Render**
 
-Render dashboard → `fynman-api` → **Settings → Custom Domains** → **Add Custom Domain** → `api.fynmanai.com`. Render displays a CNAME target such as `fynman-api.onrender.com`. Copy it.
+Render dashboard → `feynman-api` → **Settings → Custom Domains** → **Add Custom Domain** → `api.feynmanai.com`. Render displays a CNAME target such as `feynman-api.onrender.com`. Copy it.
 
 - [ ] **Step 2 [USER]: Create the DNS record in Cloudflare**
 
@@ -376,13 +376,13 @@ Render's Custom Domains panel shows the domain as verified with a certificate is
 - [ ] **Step 4 [CLAUDE]: Verify the subdomain serves the API**
 
 ```bash
-curl -s -o /dev/null -w "api.fynmanai.com  HTTP %{http_code}\n" --max-time 60 https://api.fynmanai.com/ && curl -s --max-time 60 https://api.fynmanai.com/api
+curl -s -o /dev/null -w "api.feynmanai.com  HTTP %{http_code}\n" --max-time 60 https://api.feynmanai.com/ && curl -s --max-time 60 https://api.feynmanai.com/api
 ```
 
 Expected output:
 
 ```
-api.fynmanai.com  HTTP 200
+api.feynmanai.com  HTTP 200
 {"success":true,"message":"Tryora API is running!"}
 ```
 
@@ -392,10 +392,10 @@ api.fynmanai.com  HTTP 200
 
 - [ ] **Step 1 [USER]: Update Render**
 
-Render dashboard → `fynman-api` → **Environment** → set:
+Render dashboard → `feynman-api` → **Environment** → set:
 
 ```
-GOOGLE_CALLBACK_URL = https://api.fynmanai.com/api/auth/google/callback
+GOOGLE_CALLBACK_URL = https://api.feynmanai.com/api/auth/google/callback
 ```
 
 Save. This triggers a redeploy.
@@ -419,15 +419,15 @@ Two independent concerns. Receiving is Cloudflare; sending is Resend.
 Cloudflare → your domain → **Email → Email Routing** → **Get started**. Cloudflare adds the required MX records automatically. Create two addresses, each forwarding to a mailbox you already read:
 
 ```
-info@fynmanai.com     → <your existing mailbox>
-service@fynmanai.com  → <your existing mailbox>
+info@feynmanai.com     → <your existing mailbox>
+service@feynmanai.com  → <your existing mailbox>
 ```
 
 Verify the destination address via the confirmation email Cloudflare sends, or forwarding silently fails.
 
 - [ ] **Step 2 [USER]: Add the domain in Resend**
 
-https://resend.com → sign up → **Domains → Add Domain** → `fynmanai.com`. Resend displays DNS records to add: a DKIM `TXT`, an SPF `TXT`, and optionally a DMARC `TXT`.
+https://resend.com → sign up → **Domains → Add Domain** → `feynmanai.com`. Resend displays DNS records to add: a DKIM `TXT`, an SPF `TXT`, and optionally a DMARC `TXT`.
 
 - [ ] **Step 3 [USER]: Add Resend's records in Cloudflare**
 
@@ -447,7 +447,7 @@ Resend → **API Keys → Create API Key**, with send permission. Copy it; it is
 
 - [ ] **Step 5 [USER]: Set the email variables in Render**
 
-Render dashboard → `fynman-api` → **Environment**:
+Render dashboard → `feynman-api` → **Environment**:
 
 | Key | Value |
 |---|---|
@@ -456,7 +456,7 @@ Render dashboard → `fynman-api` → **Environment**:
 | `EMAIL_SECURE` | `true` |
 | `EMAIL_USER` | `resend` |
 | `EMAIL_PASS` | the API key from Step 4 |
-| `EMAIL_FROM` | `noreply@fynmanai.com` |
+| `EMAIL_FROM` | `noreply@feynmanai.com` |
 
 Save, which redeploys.
 
@@ -479,14 +479,14 @@ Register a new account on the deployed app using an address you control, and con
 
 - [ ] **Step 1: Update the Live URLs**
 
-Replace the Live table's URLs with the real ones: the frontend row stays as "not yet deployed (sub-project 1)", and the API row becomes `https://api.fynmanai.com`.
+Replace the Live table's URLs with the real ones: the frontend row stays as "not yet deployed (sub-project 1)", and the API row becomes `https://api.feynmanai.com`.
 
 - [ ] **Step 2: Update the Google OAuth redirect URIs**
 
 Replace the `onrender.com` URI with:
 
 ```
-https://api.fynmanai.com/api/auth/google/callback
+https://api.feynmanai.com/api/auth/google/callback
 http://localhost:8000/api/auth/google/callback
 ```
 
@@ -497,17 +497,17 @@ The README claims the free Postgres is deleted after 30 days. That no longer app
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/prohorsaha/fynmanAI && git add README.md && git commit -m "Update README for Neon database and fynmanai.com domain" && git push origin main
+cd /Users/prohorsaha/feynmanAI && git add README.md && git commit -m "Update README for Neon database and feynmanai.com domain" && git push origin main
 ```
 
 ---
 
 ## Done when
 
-- `list_services` shows `fynman-api` with a `live` deploy.
-- `https://api.fynmanai.com/` returns 200 and `/api` returns the JSON success body.
+- `list_services` shows `feynman-api` with a `live` deploy.
+- `https://api.feynmanai.com/` returns 200 and `/api` returns the JSON success body.
 - Logs show migrations applied, the server listening, Redis connected, and both BullMQ workers running.
-- Mail to `info@fynmanai.com` reaches your mailbox.
+- Mail to `info@feynmanai.com` reaches your mailbox.
 - A registration email from the app arrives with `spf=pass` and `dkim=pass`.
 
 ## Not included
