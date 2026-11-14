@@ -68,9 +68,14 @@ export async function updateTokens({
 	const cookie = (await cookies()).get("session")?.value;
 	if (!cookie) return null;
 
-	const { payload } = await jwtVerify<Session>(cookie, encodedKey);
-
-	if (!payload) throw new Error("Session not found");
+	// An expired or tampered cookie means there is no session to update. Return
+	// null, as for a missing cookie above, so callers that have just obtained
+	// fresh tokens can carry on with them instead of failing the whole request.
+	const verified = await jwtVerify<Session>(cookie, encodedKey).catch(
+		() => null,
+	);
+	if (!verified) return null;
+	const { payload } = verified;
 
 	const newPayload: Session = {
 		user: {
