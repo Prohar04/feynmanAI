@@ -1,9 +1,10 @@
 import type { ConnectionOptions } from 'bullmq';
+import { parseRedisUrl } from '#src/config/redis-url.ts';
 
 // REDIS_URL is preferred (managed hosts such as Render only expose a URL).
 // Fall back to discrete host/port/password for local development.
-const redisUrl = process.env.REDIS_URL;
-const parsedUrl = redisUrl ? new URL(redisUrl) : undefined;
+const redisUrl = process.env.REDIS_URL?.trim();
+const parsedUrl = redisUrl ? parseRedisUrl(redisUrl) : undefined;
 
 const redisHost = parsedUrl
   ? parsedUrl.hostname
@@ -15,6 +16,11 @@ const redisPassword =
   (parsedUrl && decodeURIComponent(parsedUrl.password)) ||
   process.env.REDIS_PASSWORD ||
   undefined;
+const redisUsername =
+  (parsedUrl && decodeURIComponent(parsedUrl.username)) || undefined;
+// rediss:// means TLS. The URL's scheme is the only place that is expressed,
+// and ioredis (used by BullMQ) needs it passed explicitly.
+const redisUseTls = parsedUrl?.protocol === 'rediss:';
 const redisDb = process.env.REDIS_DB ? Number(process.env.REDIS_DB) : undefined;
 
 if (Number.isNaN(redisPort)) {
@@ -28,6 +34,8 @@ if (redisDb !== undefined && Number.isNaN(redisDb)) {
 export const bullmqConnection: ConnectionOptions = {
   host: redisHost,
   port: redisPort,
+  ...(redisUsername ? { username: redisUsername } : {}),
   ...(redisPassword ? { password: redisPassword } : {}),
+  ...(redisUseTls ? { tls: {} } : {}),
   ...(redisDb !== undefined ? { db: redisDb } : {}),
 };
