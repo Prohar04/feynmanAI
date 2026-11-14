@@ -2,8 +2,9 @@ FROM oven/bun:latest AS base
 
 WORKDIR /app
 
-ARG DATABASE_URL=postgresql://feynman:feynman@postgres:5432/feynmanai?schema=public
-ENV DATABASE_URL=${DATABASE_URL}
+# DATABASE_URL is deliberately not set here. `prisma generate` runs without
+# it, and a default would be baked into the image metadata. It is supplied at
+# runtime by the host (Render environment) or docker-compose.
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
