@@ -22,6 +22,10 @@ import {
 const getFromAddress = (): string | undefined =>
   process.env.EMAIL_FROM || process.env.EMAIL_USER;
 
+export const shouldLogEmailPreview = (): boolean =>
+  process.env.NODE_ENV !== 'production' &&
+  process.env.EMAIL_PREVIEW_LOGGING === 'true';
+
 export const sendVerificationEmail = async ({
   to,
   userName,
@@ -43,11 +47,11 @@ export const sendVerificationEmail = async ({
       subject: 'Verification Code for Your Account',
       html,
     });
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info('[Mailer] Preview URL:', nodemailer.getTestMessageUrl(info));
+    if (shouldLogEmailPreview()) {
+      logger.info('[Mailer] Email preview generated', { available: Boolean(nodemailer.getTestMessageUrl(info)) });
     }
   } catch (error) {
-    logger.error('Error sending email:', error);
+    logger.error('Error sending email', { error });
     throw new Error('Failed to send verification email');
   }
 };
@@ -69,11 +73,11 @@ export const sendWelcomeEmail = async ({
       subject: 'Welcome to Your Account',
       html,
     });
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info('[Mailer] Preview URL:', nodemailer.getTestMessageUrl(info));
+    if (shouldLogEmailPreview()) {
+      logger.info('[Mailer] Email preview generated', { available: Boolean(nodemailer.getTestMessageUrl(info)) });
     }
   } catch (error) {
-    logger.error('Error sending email:', error);
+    logger.error('Error sending email', { error });
     throw new Error('Failed to send welcome email');
   }
 };
@@ -99,11 +103,11 @@ export const sendPasswordResetEmail = async ({
       subject: 'Password Reset Request',
       html,
     });
-    if (process.env.NODE_ENV !== 'production') {
-      logger.info('[Mailer] Preview URL:', nodemailer.getTestMessageUrl(info));
+    if (shouldLogEmailPreview()) {
+      logger.info('[Mailer] Email preview generated', { available: Boolean(nodemailer.getTestMessageUrl(info)) });
     }
   } catch (error) {
-    logger.error('Error sending email:', error);
+    logger.error('Error sending email', { error });
     throw new Error('Failed to send password reset email');
   }
 };

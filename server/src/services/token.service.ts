@@ -20,7 +20,7 @@ export async function saveRefreshToken(
       },
     });
   } catch (err) {
-    logger.error('Error in saving refresh token:', err);
+    logger.error('Refresh token persistence failed', { operation: 'save', error: err });
     throw err;
   }
 }
@@ -36,7 +36,7 @@ export async function findRefreshToken(token: string) {
     });
     return refreshToken;
   } catch (err) {
-    logger.error('Refresh Token Not Found:', err);
+    logger.error('Refresh token lookup failed', { operation: 'find', error: err });
     throw err;
   }
 }
@@ -45,7 +45,7 @@ export async function deleteAllRefreshTokens(userId: string) {
   try {
     await prisma.refreshToken.deleteMany({ where: { userId } });
   } catch (err) {
-    logger.error('Error in deleting refresh token:', err);
+    logger.error('Refresh token deletion failed', { operation: 'delete-all', error: err });
     throw err;
   }
 }
@@ -54,7 +54,7 @@ export async function deleteCurrentRefreshToken(sessionId: string) {
   try {
     await prisma.refreshToken.deleteMany({ where: { sessionId } });
   } catch (err) {
-    logger.error('Error in deleting user refresh tokens:', err);
+    logger.error('Refresh token deletion failed', { operation: 'delete-session', error: err });
     throw err;
   }
 }
@@ -72,7 +72,7 @@ export async function isValidSession(userId: string, sessionId: string) {
     });
     return !!token;
   } catch (err) {
-    logger.error('Error in validating session:', err);
+    logger.error('Refresh session validation failed', { operation: 'validate', error: err });
     throw err;
   }
 }
@@ -84,7 +84,7 @@ export async function revokeSession(userId: string, sessionId: string) {
       data: { isActive: false },
     });
   } catch (err) {
-    logger.error('Error in revoking session:', err);
+    logger.error('Refresh session revocation failed', { operation: 'revoke', error: err });
     throw err;
   }
 }

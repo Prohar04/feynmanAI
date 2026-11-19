@@ -23,6 +23,7 @@ export const transcribeAudioBuffer = async (params: {
   language?: string;
 }): Promise<TranscriptionResult> => {
   const apiKey = requireGroqKey();
+  const startedAt = Date.now();
 
   // Groq Whisper model
   const model = env.STT_MODEL || 'whisper-large-v3-turbo';
@@ -45,34 +46,52 @@ export const transcribeAudioBuffer = async (params: {
     form.append('language', params.language);
   }
 
-  const response = await fetch(
-    'https://api.groq.com/openai/v1/audio/transcriptions',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: form,
+  try {
+    const response = await fetch(
+      'https://api.groq.com/openai/v1/audio/transcriptions',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: form,
+      }
+    );
+
+    if (!response.ok) {
+      await response.arrayBuffer();
+      throw new Error(`Groq transcription failed with status ${response.status}`);
     }
-  );
 
-  if (!response.ok) {
-    const errorText = await response.text();
+    const data = (await response.json()) as {
+      text?: string;
+    };
 
-    throw new Error(`Groq transcription failed: ${errorText}`);
+    if (!data.text) {
+      throw new Error('Groq transcription missing text');
+    }
+
+    logger.debug('STT request completed', {
+      provider: 'groq',
+      model,
+      durationMs: Date.now() - startedAt,
+      status: 'success',
+    });
+
+    return {
+      text: data.text,
+      raw: { hasText: true },
+    };
+  } catch (error) {
+    logger.warn('STT request failed', {
+      provider: 'groq',
+      model,
+      durationMs: Date.now() - startedAt,
+      status: 'failure',
+      error,
+    });
+    throw error instanceof Error
+      ? error
+      : new Error('Groq transcription failed');
   }
-
-  const data = (await response.json()) as {
-    text?: string;
-  };
-
-  logger.debug('Groq transcription response', { data });
-  if (!data.text) {
-    throw new Error('Groq transcription missing text');
-  }
-
-  return {
-    text: data.text,
-    raw: data,
-  };
 };

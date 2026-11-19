@@ -8,6 +8,7 @@ import {
   startRetentionScheduler,
   stopRetentionScheduler,
 } from '#src/services/retention.service.ts';
+import { getAllowedOrigins } from '#config/cors.ts';
 
 const PORT = process.env.PORT || 8000;
 let isShuttingDown = false;
@@ -18,16 +19,11 @@ redisClient
     logger.info('Connected to Redis');
   })
   .catch(err => {
-    logger.error(`Failed to connect to Redis: ${String(err)}`);
+    logger.error('Failed to connect to Redis', { error: err });
   });
 
 const httpServer = createServer(app);
-const allowedOrigins = [
-  env.FRONTEND_URL,
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-].filter((origin): origin is string => Boolean(origin));
+const allowedOrigins = getAllowedOrigins();
 
 const io = new SocketServer(httpServer, {
   path: env.WS_PATH || '/ws',
@@ -69,7 +65,7 @@ const shutdown = async (signal: string) => {
     logger.info('API server shut down cleanly');
     process.exit(0);
   } catch (err) {
-    logger.error(`Shutdown failed: ${String(err)}`);
+    logger.error('Shutdown failed', { error: err });
     process.exit(1);
   }
 };

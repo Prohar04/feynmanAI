@@ -200,7 +200,7 @@ const withFallback = async <T>(
     logger.warn(`[AI] ${kind} primary provider failed, retrying fallback.`, {
       primary,
       fallback,
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
 
     return runner(fallback, true);

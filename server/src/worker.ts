@@ -24,7 +24,7 @@ const shutdown = async (signal: string) => {
     logger.info('[BullMQ] Worker closed cleanly');
     process.exit(0);
   } catch (error) {
-    logger.error(`[BullMQ] Worker shutdown failed: ${String(error)}`);
+    logger.error('[BullMQ] Worker shutdown failed', { error });
     process.exit(1);
   }
 };
@@ -45,7 +45,7 @@ const startWorkers = async () => {
     logger.info('[BullMQ] URL ingest worker is running');
     logger.info('[BullMQ] Audio processing worker is running');
   } catch (error: unknown) {
-    logger.error(`[BullMQ] Worker failed to start: ${String(error)}`);
+    logger.error('[BullMQ] Worker failed to start', { error });
     process.exit(1);
   }
 };

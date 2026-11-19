@@ -25,7 +25,7 @@ export const createCustomQueue = <TData, TName extends string>(
     prefix: queuePrefix,
   });
   events.on('error', err =>
-    logger.error(`[BullMQ] ${queueName} error: ${err.message}`)
+    logger.error(`[BullMQ] ${queueName} error`, { error: err })
   );
 
   const add = async (data: TData, jobId?: string) => {

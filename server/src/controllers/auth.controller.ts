@@ -26,6 +26,10 @@ import {
   makeUserSessionCacheKey,
   setCache,
 } from '#src/utils/redis.ts';
+import {
+  consumeOAuthExchange,
+  createOAuthExchange,
+} from '#src/services/oauth-exchange.service.ts';
 import z from 'zod';
 import { ReturnUserDto } from '#src/types/user.js';
 import {
@@ -134,7 +138,7 @@ export const signup = async (req: Request, res: Response) => {
       verificationLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/verify-email?token=${verificationToken}`,
       expiryMinutes: 1440, // 24 hours
     }).catch(err =>
-      logger.error('Verification email failed (non-fatal):', err)
+      logger.error('Verification email failed (non-fatal)', { error: err })
     );
 
     sendApiSuccess(res, {
@@ -143,7 +147,7 @@ export const signup = async (req: Request, res: Response) => {
       data: { user: newUser },
     });
   } catch (error) {
-    logger.error('Error in signup:', error);
+    logger.error('Signup failed', { operation: 'signup', error });
     sendApiError(res, { status: 500, message: 'user creation failed' });
   }
 };
@@ -271,8 +275,6 @@ export const googleAuthCallback = [
   async (req: Request, res: Response) => {
     try {
       const user = req.user as ReturnUserDto;
-      const { ip, 'user-agent': userAgent } = req.headers;
-
       if (!user) {
         return sendApiError(res, {
           status: 401,
@@ -281,53 +283,75 @@ export const googleAuthCallback = [
       }
 
       const newSessionId = createRandomToken();
-      const { accessToken, refreshToken } = await generateTokens(
-        user.id,
-        newSessionId
-      );
+      const code = await createOAuthExchange({
+        user,
+        sessionId: newSessionId,
+      });
 
-      const hashedRefreshToken = hashTokenCrypto(refreshToken);
-      await saveRefreshToken(
-        user.id,
-        hashedRefreshToken,
-        newSessionId,
-        userAgent,
-        ip as string
-      );
-
-      // saving to cache for quick session validation
-      await setCache(
-        makeUserSessionCacheKey(user.id, newSessionId),
-        user.id,
-        refreshToken
-      );
-
+      // Tokens are issued only by the server-side exchange route. The browser
+      // receives a short-lived, single-use code instead of credentials.
       const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
-
-      const existingUser = await findUserByEmail(user.email);
-
-      if (!existingUser) {
-        return res.redirect(
-          `${frontend}/api/auth/google/callback?id=${user.id}&email=${user.email}&name=${user.name}&avatar=${user.avatar || ''}&emailVerified=${user.emailVerified}&isActive=${user.isActive}&accessToken=${accessToken}&refreshToken=${refreshToken}&userBodyImageUrl=${user.userBodyImageUrl || ''}&age=${user.age || ''}`
-        );
-      }
-
-      // sendWelcomeEmail({
-      //   to: user.email,
-      //   userName: user.name,
-      //   dashboardLink: `${frontend}`, //TODO: add dashboard link
-      // });
-
       return res.redirect(
-        `${frontend}/api/auth/google/callback?id=${user.id}&email=${user.email}&name=${user.name}&avatar=${user.avatar || ''}&emailVerified=${user.emailVerified}&isActive=${user.isActive}&accessToken=${accessToken}&refreshToken=${refreshToken}&userBodyImageUrl=${user.userBodyImageUrl || ''}&age=${user.age || ''}`
+        `${frontend}/api/auth/google/callback?code=${encodeURIComponent(code)}`
       );
     } catch (error) {
-      logger.error('Error in Google auth callback:', error);
+      logger.error('Google auth callback failed', { operation: 'oauth-callback', error });
       const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
       return res.redirect(`${frontend}/auth/failure`);
     }
   },
 ];
+
+export const exchangeGoogleCode = async (req: Request, res: Response) => {
+  const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+  const exchange = await consumeOAuthExchange(code);
+
+  if (!exchange) {
+    return sendApiError(res, {
+      status: 400,
+      message: 'Invalid or expired authorization code',
+    });
+  }
+
+  try {
+    const { ip, 'user-agent': userAgent } = req.headers;
+    const { accessToken, refreshToken } = await generateTokens(
+      exchange.user.id,
+      exchange.sessionId
+    );
+    const hashedRefreshToken = hashTokenCrypto(refreshToken);
+
+    await saveRefreshToken(
+      exchange.user.id,
+      hashedRefreshToken,
+      exchange.sessionId,
+      userAgent,
+      ip as string
+    );
+    await setCache(
+      makeUserSessionCacheKey(exchange.user.id, exchange.sessionId),
+      exchange.user.id,
+      refreshToken
+    );
+
+    return sendApiSuccess(res, {
+      data: {
+        user: exchange.user,
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    logger.error('Google authorization code exchange failed', {
+      operation: 'oauth-exchange',
+      error,
+    });
+    return sendApiError(res, {
+      status: 500,
+      message: 'Authentication exchange failed',
+    });
+  }
+};
 
 // @desc    Google OAuth2 failure route
 // @route   GET /auth/google/failure

@@ -52,7 +52,7 @@ const transcribeWithRetry = async (params: {
       if (attempt < attempts) {
         logger.warn('[Realtime] STT attempt failed; retrying audio chunk', {
           attempt,
-          error: error instanceof Error ? error.message : String(error),
+          error,
         });
       }
     }

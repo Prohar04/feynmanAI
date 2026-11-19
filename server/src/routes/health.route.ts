@@ -31,7 +31,7 @@ router.get('/', async (_req, res) => {
     });
   } catch (error) {
     logger.error('Health check failed to complete', {
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
 
     return res.status(503).json({

@@ -228,7 +228,7 @@ export const trackAnalyticsEvent = async (
   } catch (error) {
     logger.warn('[Analytics] Failed to persist event', {
       event: input.event,
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
   }
 };

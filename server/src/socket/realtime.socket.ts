@@ -9,7 +9,7 @@ import {
 import { handleTextInput } from '#src/services/text-input.service.ts';
 import { transcribeAudioBuffer } from '#src/services/stt.service.ts';
 import {
-  generateFinalEvaluation,
+  ensureFinalEvaluation,
   generateRealtimeFeedback,
   generateSessionStartResponse,
 } from '#src/services/evaluation.service.ts';
@@ -335,7 +335,7 @@ export const registerRealtimeSocket = (io: Server) => {
       try {
         await generateAndEmitRealtimeResponse(params);
       } catch (error) {
-        logger.error(`Realtime LLM response failed: ${String(error)}`);
+        logger.error('Realtime LLM response failed', { error });
       }
     }, delayMs);
 
@@ -364,7 +364,7 @@ export const registerRealtimeSocket = (io: Server) => {
       );
 
       const metadata = await getSessionMetadata(payload.sessionId);
-      const evaluation = await generateFinalEvaluation({
+      const evaluation = await ensureFinalEvaluation({
         sessionId: payload.sessionId,
         subject: session.subject || undefined,
         topic: session.topic || undefined,
@@ -380,7 +380,7 @@ export const registerRealtimeSocket = (io: Server) => {
 
       cb?.({ ok: true });
     } catch (error) {
-      logger.error(`Realtime session end failed: ${String(error)}`);
+      logger.error('Realtime session end failed', { error });
       cb?.({ ok: false, error: 'Failed to end session' });
     }
   };
@@ -407,7 +407,7 @@ export const registerRealtimeSocket = (io: Server) => {
 
       cb?.({ ok: true });
     } catch (error) {
-      logger.error(`Realtime session pause failed: ${String(error)}`);
+      logger.error('Realtime session pause failed', { error });
       cb?.({ ok: false, error: 'Failed to pause session' });
     }
   };
@@ -425,10 +425,19 @@ export const registerRealtimeSocket = (io: Server) => {
         });
         socket.join(session.id);
         const metadata = await getSessionMetadata(session.id);
+        const selectedResourceIds = Array.from(
+          new Set([
+            ...(payload?.resourceIds || []),
+            ...(payload?.resources || []).map(
+              (resource: { id: string }) => resource.id
+            ),
+          ])
+        );
         const startResponse = await generateSessionStartResponse({
           subject: session.subject || undefined,
           topic: session.topic || undefined,
           goal: session.goal || undefined,
+          resourceIds: selectedResourceIds,
           sessionResources: metadata?.resources,
           sessionState: payload?.sessionState,
         });
@@ -445,7 +454,7 @@ export const registerRealtimeSocket = (io: Server) => {
         emitLlmResponse(session.id, 'start', startResponse.content);
         cb?.({ ok: true, session });
       } catch (error) {
-        logger.error(`Realtime session start failed: ${String(error)}`);
+        logger.error('Realtime session start failed', { error });
         cb?.({ ok: false, error: 'Failed to start session' });
       }
     });
@@ -519,7 +528,7 @@ export const registerRealtimeSocket = (io: Server) => {
 
         cb?.({ ok: true, chunk });
       } catch (error) {
-        logger.error(`Realtime audio chunk failed: ${String(error)}`);
+        logger.error('Realtime audio chunk failed', { error });
         cb?.({ ok: false, error: 'Failed to process audio chunk' });
       }
     });
@@ -574,7 +583,7 @@ export const registerRealtimeSocket = (io: Server) => {
 
         cb?.({ ok: true, chunk });
       } catch (error) {
-        logger.error(`Realtime text input failed: ${String(error)}`);
+        logger.error('Realtime text input failed', { error });
         cb?.({ ok: false, error: 'Failed to process text input' });
       }
     });

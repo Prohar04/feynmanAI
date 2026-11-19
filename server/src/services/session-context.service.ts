@@ -137,6 +137,7 @@ export const resolveAiContext = async (params: {
   transcript?: string;
   subject?: string;
   topic?: string;
+  resourceIds?: string[];
   sessionResources?: SessionResourceContext[];
   qdrantLimit?: number;
 }): Promise<RetrievedContextChunk[]> => {
@@ -154,12 +155,13 @@ export const resolveAiContext = async (params: {
   try {
     const fromQdrant = await retrieveContext({
       transcript: query!,
+      resourceIds: params.resourceIds,
       limit: params.qdrantLimit ?? 3,
     });
     return mergeContext(fromParsed, fromQdrant);
   } catch (error) {
     logger.warn('Qdrant context lookup skipped', {
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
     return fromParsed;
   }

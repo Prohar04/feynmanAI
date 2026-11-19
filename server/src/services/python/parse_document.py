@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Any, Dict
 
@@ -100,39 +101,42 @@ def _convert_file(file_path: Path) -> Dict[str, Any]:
     file_type = extension or "unknown"
 
     try:
-        md, ocr_enabled = _build_markitdown()
-    except Exception as exc:
-        return _error_payload(
-            "MISSING_DEPENDENCY",
-            "Failed to initialize MarkItDown",
-            details=str(exc),
-            retryable=False,
-            metadata={"fileType": file_type, "hasOCR": False},
-        )
+        # Third-party parsers may write warnings to stdout. Keep the subprocess
+        # stdout contract strict: only the final JSON response belongs there.
+        with redirect_stdout(sys.stderr):
+            try:
+                md, ocr_enabled = _build_markitdown()
+            except Exception as exc:
+                return _error_payload(
+                    "MISSING_DEPENDENCY",
+                    "Failed to initialize MarkItDown",
+                    details=str(exc),
+                    retryable=False,
+                    metadata={"fileType": file_type, "hasOCR": False},
+                )
 
-    try:
-        if hasattr(md, "convert_local"):
-            result = md.convert_local(str(file_path))
-        else:
-            result = md.convert(str(file_path))
+            if hasattr(md, "convert_local"):
+                result = md.convert_local(str(file_path))
+            else:
+                result = md.convert(str(file_path))
 
-        text = (
-            getattr(result, "text_content", None)
-            or getattr(result, "markdown", None)
-            or getattr(result, "text", None)
-            or ""
-        )
+            text = (
+                getattr(result, "text_content", None)
+                or getattr(result, "markdown", None)
+                or getattr(result, "text", None)
+                or ""
+            )
 
-        has_ocr = bool(ocr_enabled and extension in OCR_CAPABLE_EXTENSIONS)
+            has_ocr = bool(ocr_enabled and extension in OCR_CAPABLE_EXTENSIONS)
 
-        return {
-            "success": True,
-            "text": text,
-            "metadata": {
-                "fileType": file_type,
-                "hasOCR": has_ocr,
-            },
-        }
+            return {
+                "success": True,
+                "text": text,
+                "metadata": {
+                    "fileType": file_type,
+                    "hasOCR": has_ocr,
+                },
+            }
     except Exception as exc:
         return _error_payload(
             "PARSE_FAILED",

@@ -49,7 +49,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       user;
     return sendApiSuccess(res, { data: { user: userProfile } });
   } catch (error) {
-    logger.error('Error fetching user profile:', error);
+    logger.error('Error fetching user profile', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to fetch user profile',
@@ -87,7 +87,7 @@ export const updateUserProfileData = async (
       data: { user: updatedUser },
     });
   } catch (error) {
-    logger.error('Error updating user profile:', error);
+    logger.error('Error updating user profile', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to update user profile',
@@ -144,7 +144,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
 
     return sendApiSuccess(res, { message: 'Password changed successfully' });
   } catch (error) {
-    logger.error('Error changing password:', error);
+    logger.error('Error changing password', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to change password',
@@ -190,7 +190,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
       message: 'If that email is registered, a reset link has been sent',
     });
   } catch (error) {
-    logger.error('Error in forgot password:', error);
+    logger.error('Error in forgot password', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to process forgot password request',
@@ -238,7 +238,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     return sendApiSuccess(res, { message: 'Password reset successfully' });
   } catch (error) {
-    logger.error('Error resetting password:', error);
+    logger.error('Error resetting password', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to reset password',
@@ -283,7 +283,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
     return sendApiSuccess(res, { message: 'Email verified successfully' });
   } catch (error) {
-    logger.error('Error verifying email:', error);
+    logger.error('Error verifying email', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to verify email',
@@ -341,7 +341,7 @@ export const resendVerificationEmail = async (
       message: 'Verification email sent successfully',
     });
   } catch (error) {
-    logger.error('Error resending verification email:', error);
+    logger.error('Error resending verification email', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to send verification email',
@@ -407,7 +407,7 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
 
     return sendApiSuccess(res, { message: 'Account deleted successfully' });
   } catch (error) {
-    logger.error('Error deleting account:', error);
+    logger.error('Error deleting account', { error });
     return sendApiError(res, {
       status: 500,
       message: 'Failed to delete account',

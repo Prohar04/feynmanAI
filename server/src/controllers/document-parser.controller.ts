@@ -84,7 +84,7 @@ export const parseDocumentUploadHandler = async (
 
       logger.error('Document parsed but ingestion failed', {
         resourceId: resource.id,
-        error: ingestError,
+        errorCategory: 'resource-ingestion-failed',
       });
     }
 
@@ -113,7 +113,7 @@ export const parseDocumentUploadHandler = async (
     if (error instanceof DocumentParserError) {
       logger.warn('Document parser error', {
         code: error.code,
-        details: error.details,
+        hasDetails: Boolean(error.details),
       });
 
       return sendApiError(res, {
@@ -124,7 +124,7 @@ export const parseDocumentUploadHandler = async (
     }
 
     logger.error('Failed to parse document', {
-      error: error instanceof Error ? error.message : error,
+      error,
     });
 
     return sendApiError(res, {

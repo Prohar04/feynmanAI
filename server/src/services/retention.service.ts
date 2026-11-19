@@ -56,7 +56,7 @@ const deleteResourceArtifacts = async (resource: {
   } catch (error) {
     logger.warn('[Retention] Failed to delete resource vectors', {
       resourceId: resource.id,
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
   }
 
@@ -67,7 +67,7 @@ const deleteResourceArtifacts = async (resource: {
       logger.warn('[Retention] Failed to delete S3 object', {
         resourceId: resource.id,
         storageKey: resource.storageKey,
-        error: error instanceof Error ? error.message : String(error),
+      error,
       });
     }
   }
@@ -82,7 +82,7 @@ const deleteResourceArtifacts = async (resource: {
         logger.warn('[Retention] Failed to delete local resource file', {
           resourceId: resource.id,
           filePath: resource.filePath,
-          error: error instanceof Error ? error.message : String(error),
+          error,
         });
       }
     }
@@ -158,7 +158,7 @@ export const startRetentionScheduler = () => {
       }
     } catch (error) {
       logger.warn('[Retention] Sweep failed', {
-        error: error instanceof Error ? error.message : String(error),
+        error,
       });
     }
   };

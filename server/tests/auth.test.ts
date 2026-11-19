@@ -29,6 +29,9 @@ const mockIsValidSession = jest.fn<any>();
 const mockGetSetCache = jest.fn<any>();
 const mockSetCache = jest.fn<any>();
 const mockInvalidateCache = jest.fn<any>();
+const mockCreateOAuthExchange = jest.fn<any>();
+const mockConsumeOAuthExchange = jest.fn<any>();
+let mockGoogleUser: any = null;
 
 // 2. Mock Modules
 jest.unstable_mockModule('#src/config/google.config.ts', () => ({}));
@@ -83,6 +86,11 @@ jest.unstable_mockModule('#src/utils/redis.ts', () => ({
     `user-session:${userId}:${sessionId}`,
 }));
 
+jest.unstable_mockModule('#src/services/oauth-exchange.service.ts', () => ({
+  createOAuthExchange: mockCreateOAuthExchange,
+  consumeOAuthExchange: mockConsumeOAuthExchange,
+}));
+
 jest.unstable_mockModule('passport', () => ({
   default: {
     initialize: () => (req: any, _res: any, next: any) => {
@@ -93,7 +101,12 @@ jest.unstable_mockModule('passport', () => ({
       req.logout = (cb: any) => cb();
       next();
     },
-    authenticate: () => (req: any, _res: any, next: any) => next(),
+    authenticate: () => (req: any, _res: any, next: any) => {
+      if (req.path.endsWith('/google/callback')) {
+        req.user = mockGoogleUser;
+      }
+      next();
+    },
   },
 }));
 
@@ -104,6 +117,7 @@ const authBase = '/api/auth';
 describe('Auth routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGoogleUser = null;
 
     // Default implementation for cache wrapper
     mockGetSetCache.mockImplementation(async (_key: string, cb: any) => {
@@ -556,6 +570,118 @@ describe('Auth routes', () => {
       expect(mockInvalidateCache).toHaveBeenCalledWith(
         'user-session:user-1:session-1',
         'user-1'
+      );
+    });
+  });
+
+  describe('POST /auth/google/exchange', () => {
+    const exchangeUser = {
+      id: 'user-google',
+      email: 'google@example.com',
+      name: 'Google User',
+      emailVerified: true,
+      isActive: true,
+    };
+
+    it('rejects an invalid or expired exchange code', async () => {
+      mockConsumeOAuthExchange.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post(`${authBase}/google/exchange`)
+        .send({ code: 'invalid-code' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toMatch(/invalid or expired/i);
+      expect(mockGenerateTokens).not.toHaveBeenCalled();
+    });
+
+    it('redeems a valid code and issues the normal token pair', async () => {
+      mockConsumeOAuthExchange.mockResolvedValue({
+        user: exchangeUser,
+        sessionId: 'google-session-1',
+      });
+      mockGenerateTokens.mockResolvedValue({
+        accessToken: 'google-access',
+        refreshToken: 'google-refresh',
+      });
+      mockHashTokenCrypto.mockReturnValue('hashed-google-refresh');
+      mockSaveRefreshToken.mockResolvedValue(undefined);
+      mockSetCache.mockResolvedValue(undefined);
+
+      const response = await request(app)
+        .post(`${authBase}/google/exchange`)
+        .send({ code: 'one-time-code' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual({
+        user: exchangeUser,
+        accessToken: 'google-access',
+        refreshToken: 'google-refresh',
+      });
+      expect(mockSaveRefreshToken).toHaveBeenCalledWith(
+        'user-google',
+        'hashed-google-refresh',
+        'google-session-1',
+        undefined,
+        undefined
+      );
+    });
+
+    it('cannot redeem a code after it has been consumed', async () => {
+      mockConsumeOAuthExchange
+        .mockResolvedValueOnce({ user: exchangeUser, sessionId: 'session-1' })
+        .mockResolvedValueOnce(null);
+      mockGenerateTokens.mockResolvedValue({
+        accessToken: 'access-1',
+        refreshToken: 'refresh-1',
+      });
+
+      const first = await request(app)
+        .post(`${authBase}/google/exchange`)
+        .send({ code: 'single-use-code' });
+      const second = await request(app)
+        .post(`${authBase}/google/exchange`)
+        .send({ code: 'single-use-code' });
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(400);
+      expect(mockGenerateTokens).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('GET /auth/google/callback', () => {
+    it('redirects with a one-time code and never exposes tokens', async () => {
+      mockGoogleUser = {
+        id: 'user-google',
+        email: 'google@example.com',
+        name: 'Google User',
+        emailVerified: true,
+        isActive: true,
+      };
+      mockCreateRandomToken.mockReturnValue('google-session');
+      mockCreateOAuthExchange.mockResolvedValue('one-time-code');
+
+      const response = await request(app).get(`${authBase}/google/callback`);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/api/auth/google/callback?code=one-time-code'
+      );
+      expect(response.headers.location).not.toMatch(
+        /accessToken|refreshToken|userId|email=/i
+      );
+      expect(mockCreateOAuthExchange).toHaveBeenCalledWith({
+        user: mockGoogleUser,
+        sessionId: 'google-session',
+      });
+    });
+
+    it('redirects failed Google authentication to the fixed frontend failure page', async () => {
+      const response = await request(app).get(`${authBase}/google/failure`);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/auth/failure'
       );
     });
   });

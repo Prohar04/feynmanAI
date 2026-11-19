@@ -228,7 +228,7 @@ export const ingestResourceFromUrl = async (params: {
     await updateResourceStatus(params.resourceId, 'FAILED');
     logger.error('[URL Ingest] Failed to ingest URL', {
       resourceId: params.resourceId,
-      error: error instanceof Error ? error.message : String(error),
+      error,
     });
     throw error;
   }

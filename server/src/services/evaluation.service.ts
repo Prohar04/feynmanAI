@@ -17,7 +17,7 @@ import {
   shouldRunAnalysis,
 } from '#src/services/transcript-cache.service.ts';
 import { env } from '#config/env.ts';
-import { getSessionTranscriptText } from '#src/services/session.service.ts';
+import { getSessionTranscriptChunks } from '#src/services/session.service.ts';
 import {
   analyzeTranscriptQuality,
   trackAnalyticsEvent,
@@ -81,6 +81,11 @@ type RealtimeFeedbackPayload = {
 type LearningConversationEntry = {
   role: 'user' | 'assistant';
   content: string;
+  source?: 'socket-memory' | 'persisted-transcript';
+  sequence?: number;
+  startTimeMs?: number | null;
+  endTimeMs?: number | null;
+  createdAt?: string;
 };
 
 type LearningSessionState = {
@@ -423,7 +428,7 @@ const logLlmRequest = (params: {
     purpose: params.purpose,
     sessionId: params.sessionId,
     contextCount: params.contextCount,
-    messages: params.messages,
+    messageCount: params.messages.length,
     currentQuestion: params.sessionState?.currentQuestion ?? null,
     questionDepth: params.sessionState?.questionDepth ?? 0,
     failedAttempts: params.sessionState?.failedAttempts ?? 0,
@@ -595,6 +600,7 @@ export const generateSessionStartResponse = async (params: {
     transcript: contextQuery,
     subject: params.subject,
     topic: params.topic,
+    resourceIds: params.resourceIds,
     sessionResources,
     qdrantLimit: 2,
   });
@@ -749,6 +755,7 @@ export const generateRealtimeFeedback = async (params: {
     transcript: userMessage,
     subject: params.subject,
     topic: params.topic,
+    resourceIds: params.resourceIds,
     sessionResources,
     qdrantLimit: 3,
   });
@@ -872,6 +879,7 @@ export const generateFinalEvaluation = async (params: {
       .join(' \n'),
     subject: params.subject,
     topic: params.topic,
+    resourceIds: params.resourceIds,
     sessionResources,
     qdrantLimit: 3,
   });
@@ -978,6 +986,32 @@ export const generateFinalEvaluation = async (params: {
   };
 };
 
+const finalEvaluationInFlight = new Map<
+  string,
+  Promise<Awaited<ReturnType<typeof generateFinalEvaluation>>>
+>();
+
+const reconstructSessionState = async (
+  sessionId: string
+): Promise<LearningSessionState | null> => {
+  const transcriptChunks = await getSessionTranscriptChunks(sessionId);
+  if (!transcriptChunks.length) {
+    return null;
+  }
+
+  return {
+    conversationHistory: transcriptChunks.map(chunk => ({
+      role: 'user' as const,
+      content: chunk.text,
+      source: 'persisted-transcript' as const,
+      sequence: chunk.sequence,
+      startTimeMs: chunk.startTimeMs,
+      endTimeMs: chunk.endTimeMs,
+      createdAt: chunk.createdAt.toISOString(),
+    })),
+  };
+};
+
 export const getLatestFinalEvaluation = async (sessionId: string) =>
   prisma.evaluation.findFirst({
     where: { sessionId, type: 'FINAL' },
@@ -991,18 +1025,53 @@ export const ensureFinalEvaluation = async (params: {
   resourceIds?: string[];
   sessionResources?: SessionResourceContext[];
   goal?: string;
+  sessionState?: LearningSessionState;
 }) => {
   const existing = await getLatestFinalEvaluation(params.sessionId);
   if (existing) {
     return formatEvaluationForClient(existing);
   }
 
-  return generateFinalEvaluation({
-    sessionId: params.sessionId,
-    subject: params.subject,
-    topic: params.topic,
-    resourceIds: params.resourceIds,
-    sessionResources: params.sessionResources,
-    goal: params.goal,
-  });
+  const pending = finalEvaluationInFlight.get(params.sessionId);
+  if (pending) {
+    return pending;
+  }
+
+  const generation = (async () => {
+    const latest = await getLatestFinalEvaluation(params.sessionId);
+    if (latest) {
+      return formatEvaluationForClient(latest);
+    }
+
+    const hasUsableProvidedState = Boolean(
+      params.sessionState &&
+        ((params.sessionState.conversationHistory?.length ?? 0) > 0 ||
+          params.sessionState.currentQuestion)
+    );
+    const sessionState = hasUsableProvidedState
+      ? normalizeSessionState(params.sessionState)
+      : await reconstructSessionState(params.sessionId);
+    if (!sessionState) {
+      return null;
+    }
+
+    return generateFinalEvaluation({
+      sessionId: params.sessionId,
+      subject: params.subject,
+      topic: params.topic,
+      resourceIds: params.resourceIds,
+      sessionResources: params.sessionResources,
+      goal: params.goal,
+      sessionState,
+    });
+  })();
+
+  finalEvaluationInFlight.set(params.sessionId, generation);
+  try {
+    return await generation;
+  } finally {
+    if (finalEvaluationInFlight.get(params.sessionId) === generation) {
+      finalEvaluationInFlight.delete(params.sessionId);
+    }
+  }
 };

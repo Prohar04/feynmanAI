@@ -33,7 +33,7 @@ export async function findUserByEmail(email: string) {
 
     return user;
   } catch (err) {
-    logger.error('Error finding user by email:', err);
+    logger.error('User lookup failed', { operation: 'find-by-email', error: err });
     throw err;
   }
 }
@@ -62,7 +62,7 @@ export async function findUserById(id: string) {
     });
     return user;
   } catch (err) {
-    logger.error('User Not Found:', err);
+    logger.error('User lookup failed', { operation: 'find-by-id', error: err });
     throw err;
   }
 }
@@ -77,7 +77,7 @@ export async function getUserBodyImageUrl(
     });
     return user?.userBodyImageUrl || null;
   } catch (err) {
-    logger.error('Error fetching user body image URL:', err);
+    logger.error('User image lookup failed', { operation: 'find-body-image', error: err });
     throw err;
   }
 }
@@ -107,7 +107,7 @@ export async function createUser(data: CreateUserDto): Promise<ReturnUserDto> {
 
     return newUser;
   } catch (err) {
-    logger.error('Error in creating user:', err);
+    logger.error('User creation failed', { operation: 'create', error: err });
     throw err;
   }
 }
@@ -145,7 +145,7 @@ export async function updateUserProfile(
       userBodyImageUrl: user.userBodyImageUrl || undefined,
     } as ReturnUserDto;
   } catch (err) {
-    logger.error('Error in updating user profile:', err);
+    logger.error('User profile update failed', { operation: 'update-profile', error: err });
     throw err;
   }
 }
@@ -160,7 +160,7 @@ export async function updateUserPassword(
       data: { passwordHash: newPasswordHash },
     });
   } catch (err) {
-    logger.error('Error in updating user password:', err);
+    logger.error('User password update failed', { operation: 'update-password', error: err });
     throw err;
   }
 }
@@ -182,7 +182,7 @@ export async function resetUserPassword(
       },
     });
   } catch (err) {
-    logger.error('Error in resetting user password:', err);
+    logger.error('User password reset failed', { operation: 'reset-password', error: err });
     throw err;
   }
 }
@@ -209,7 +209,7 @@ export async function verifyUserEmail(
     });
     return result.count > 0;
   } catch (err) {
-    logger.error('Error in verifying email:', err);
+    logger.error('Email verification failed', { operation: 'verify-email', error: err });
     throw err;
   }
 }

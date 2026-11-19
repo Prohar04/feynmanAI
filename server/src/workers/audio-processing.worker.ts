@@ -31,7 +31,7 @@ export const startAudioProcessingWorker = () => {
     logger.error('[Realtime] Audio job failed', {
       jobId: job?.id,
       sessionId: job?.data.sessionId,
-      error: error.message,
+      error,
     });
   });
 

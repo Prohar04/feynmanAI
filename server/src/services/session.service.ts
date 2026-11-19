@@ -285,10 +285,13 @@ export const appendTranscriptChunk = async (params: {
 export const getSessionTranscriptText = async (
   sessionId: string
 ): Promise<string> => {
-  const chunks = await prisma.transcriptChunk.findMany({
-    where: { sessionId },
-    orderBy: { sequence: 'asc' },
-  });
+  const chunks = await getSessionTranscriptChunks(sessionId);
 
   return chunks.map(chunk => chunk.text).join('\n');
 };
+
+export const getSessionTranscriptChunks = async (sessionId: string) =>
+  prisma.transcriptChunk.findMany({
+    where: { sessionId },
+    orderBy: { sequence: 'asc' },
+  });

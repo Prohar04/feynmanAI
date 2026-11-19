@@ -3,6 +3,7 @@ import {
   googleAuth,
   googleAuthCallback,
   googleAuthFailure,
+  exchangeGoogleCode,
   refresh,
   signin,
   signout,
@@ -22,6 +23,7 @@ const router = Router();
 router.get('/google', googleAuth);
 router.get('/google/callback', googleAuthCallback);
 router.get('/google/failure', googleAuthFailure);
+router.post('/google/exchange', exchangeGoogleCode);
 router.post('/signup', validateRequest(SignupFormSchema), signup);
 router.post('/signin', validateRequest(SigninFormSchema), signin);
 router.get('/refresh', refresh);

@@ -1,5 +1,5 @@
 import express from 'express';
-import logger from './config/logger.ts';
+import logger, { redactRequestTarget } from './config/logger.ts';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cors from 'cors';
@@ -23,17 +23,12 @@ import {
   rateLimitPresets,
 } from '#src/middlewares/rate-limit.middleware.ts';
 import pingRoutes from './routes/ping.route.ts';
+import { getAllowedOrigins } from '#config/cors.ts';
 
 const app = express();
 app.use(helmet());
 
-const allowedOrigins = [
-  env.FRONTEND_URL,
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'https://fymenai.vercel.app',
-].filter((origin): origin is string => Boolean(origin));
+const allowedOrigins = getAllowedOrigins();
 
 app.use(
   cors({
@@ -62,7 +57,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use(
-  morgan('combined', {
+  morgan((tokens, req, res) => {
+    const method = tokens.method(req, res) || '-';
+    const route = redactRequestTarget(tokens.url(req, res) || '-');
+    const status = tokens.status(req, res) || '-';
+    const durationMs = tokens['response-time'](req, res) || '-';
+
+    return `${method} ${route} ${status} ${durationMs}ms`;
+  }, {
     stream: { write: message => logger.info(message.trim()) },
   })
 );

@@ -30,7 +30,7 @@ export const startUrlIngestWorker = () => {
   worker.on('failed', (job, error) => {
     logger.error('[URL Ingest] Job failed', {
       jobId: job?.id,
-      error: error.message,
+      error,
     });
   });
 

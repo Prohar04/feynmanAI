@@ -12,7 +12,9 @@ const PRODUCT_INTENT_EXPIRATION =
 export const getSetRedis = (key: string, cb: any) => {
   return new Promise(async (resolve, reject) => {
     try {
-      redisClient.on('error', err => logger.error('Redis Client Error', err));
+      redisClient.on('error', err =>
+        logger.error('Redis client error', { error: err })
+      );
       await redisClient.connect();
 
       const data = await redisClient.get(key);

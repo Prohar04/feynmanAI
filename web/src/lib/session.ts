@@ -5,8 +5,9 @@ import { EncryptJWT, jwtDecrypt } from "jose";
 import { cookies } from "next/headers";
 
 import { sessionSecret } from "@/lib/env";
+import { SESSION_COOKIE } from "@/lib/session-cookie";
 
-export const SESSION_COOKIE = "fa_session";
+export { SESSION_COOKIE };
 const MAX_AGE_SECONDS = 15 * 24 * 60 * 60; // matches the 15-day refresh token
 
 export type SessionUser = {

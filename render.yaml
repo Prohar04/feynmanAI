@@ -73,12 +73,16 @@ services:
         value: openrouter
       - key: REALTIME_MODEL
         value: google/gemini-2.5-flash
+      # Model IDs must exist on OpenRouter (check https://openrouter.ai/api/v1/models).
+      # A retired ID makes every session that uses it fail with a 404.
       - key: FINAL_EVALUATION_MODEL
-        value: anthropic/claude-sonnet-4
+        value: anthropic/claude-sonnet-5.5
       - key: HELPER_MODEL
-        value: meta-llama/llama-3.3-70b-versatile
+        value: meta-llama/llama-3.3-70b-instruct
+      # Must be openrouter: the OpenRouter endpoint override below, and the
+      # OpenRouter key, are only used when the provider is openrouter.
       - key: EMBEDDING_PROVIDER
-        value: openai
+        value: openrouter
       - key: EMBEDDING_MODEL
         value: openai/text-embedding-3-small
       - key: EMBEDDING_MODEL_ENDPOINT
@@ -162,3 +166,4 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+ 

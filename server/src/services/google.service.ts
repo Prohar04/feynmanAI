@@ -44,7 +44,7 @@ export async function CreateGoogleUser(profile: any) {
 
     return user;
   } catch (err) {
-    logger.error('Error in creating user:', err);
+    logger.error('Google user persistence failed', { operation: 'create-or-update', error: err });
     throw err;
   }
 }

@@ -114,6 +114,67 @@ type PythonProcessResult = {
   outputExceeded: boolean;
 };
 
+export const parseParserOutput = (result: {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+}): ParserResult => {
+  const trimmedStdout = result.stdout.trim();
+  if (!trimmedStdout) {
+    return {
+      success: false,
+      error: {
+        code: 'EMPTY_OUTPUT',
+        message: 'Parser returned empty output',
+        retryable: result.exitCode === 0,
+        details: result.stderr.trim() || undefined,
+      },
+    };
+  }
+
+  let parsed: ParserResult;
+  try {
+    parsed = JSON.parse(trimmedStdout) as ParserResult;
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: 'OUTPUT_PARSE_ERROR',
+        message: 'Failed to parse parser output',
+        retryable: true,
+        details: result.stderr.trim() || String(error),
+      },
+    };
+  }
+
+  if (parsed.success === false) {
+    return {
+      success: false,
+      error: {
+        code: parsed.error.code || 'PARSE_FAILED',
+        message: parsed.error.message || 'Parser failed',
+        retryable: parsed.error.retryable ?? false,
+        details: parsed.error.details || result.stderr.trim() || undefined,
+      },
+      metadata: parsed.metadata,
+    };
+  }
+
+  if (result.exitCode !== 0) {
+    return {
+      success: false,
+      error: {
+        code: 'PARSE_FAILED',
+        message: 'Parser exited with a failure status',
+        retryable: true,
+        details: result.stderr.trim() || undefined,
+      },
+    };
+  }
+
+  return parsed;
+};
+
 class PythonDocumentParser implements ParserAdapter {
   private config: DocumentParserConfig;
 
@@ -159,48 +220,7 @@ class PythonDocumentParser implements ParserAdapter {
         };
       }
 
-      const trimmedStdout = result.stdout.trim();
-      if (!trimmedStdout) {
-        return {
-          success: false,
-          error: {
-            code: 'EMPTY_OUTPUT',
-            message: 'Parser returned empty output',
-            retryable: result.exitCode === 0,
-            details: result.stderr.trim() || undefined,
-          },
-        };
-      }
-
-      let parsed: ParserResult | null = null;
-      try {
-        parsed = JSON.parse(trimmedStdout) as ParserResult;
-      } catch (error) {
-        return {
-          success: false,
-          error: {
-            code: 'OUTPUT_PARSE_ERROR',
-            message: 'Failed to parse parser output',
-            retryable: true,
-            details: result.stderr.trim() || String(error),
-          },
-        };
-      }
-
-      if (parsed.success === false) {
-        return {
-          success: false,
-          error: {
-            code: parsed.error.code || 'PARSE_FAILED',
-            message: parsed.error.message || 'Parser failed',
-            retryable: parsed.error.retryable ?? false,
-            details: parsed.error.details || result.stderr.trim() || undefined,
-          },
-          metadata: parsed.metadata,
-        };
-      }
-
-      return parsed;
+      return parseParserOutput(result);
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
       if (err.code === 'ENOENT') {
@@ -448,7 +468,7 @@ export class DocumentParserService {
         durationMs: duration,
         code: result.error.code,
         retryable,
-        details: result.error.details,
+        hasDetails: Boolean(result.error.details),
       });
 
       if (!retryable || attempt > this.config.maxRetries) {

@@ -25,7 +25,7 @@ export const cleanupTempFiles = (
     } catch (error) {
       logger.warn('Failed to clean temporary files', {
         count: files.length,
-        error: error instanceof Error ? error.message : error,
+        error,
       });
     }
   };
