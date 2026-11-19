@@ -61,7 +61,7 @@ jest.unstable_mockModule('#config/logger.ts', () => ({
   default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
-const { ensureFinalEvaluation } = await import(
+const { ensureFinalEvaluation, formatEvaluationForClient, parseFinalEvaluation } = await import(
   '#src/services/evaluation.service.ts'
 );
 
@@ -121,6 +121,64 @@ describe('final evaluation recovery', () => {
       provider: 'test',
       model: 'test-model',
     });
+  });
+
+  it('parses pure structured JSON with the required report fields', () => {
+    expect(parseFinalEvaluation(JSON.stringify({
+      summary: 'Clear explanation.',
+      strengths: ['Accurate'],
+      weaknesses: [],
+      missed_concepts: [],
+      follow_up_questions: ['Explain an example.'],
+      confidence_score: 75,
+    }))).toMatchObject({
+      summary: 'Clear explanation.',
+      strengths: ['Accurate'],
+      follow_up: ['Explain an example.'],
+      confidence_score: 75,
+    });
+  });
+
+  it('parses markdown-wrapped JSON and supports the legacy follow_up key', () => {
+    const result = parseFinalEvaluation(
+      '```json\n{"summary":"Good start.","follow_up":["Try again."],"confidence_score":60}\n```'
+    );
+    expect(result).toMatchObject({
+      summary: 'Good start.',
+      follow_up: ['Try again.'],
+      strengths: [],
+      weaknesses: [],
+      missed_concepts: [],
+    });
+  });
+
+  it('accepts missing optional arrays but rejects malformed or truncated output', () => {
+    expect(parseFinalEvaluation('{"summary":"Partial fields","confidence_score":50}')).toMatchObject({
+      strengths: [],
+      weaknesses: [],
+      missed_concepts: [],
+      follow_up: [],
+    });
+    expect(parseFinalEvaluation('{"summary":"Truncated","confidence_score":50')).toBeNull();
+    expect(parseFinalEvaluation('not json')).toBeNull();
+  });
+
+  it('normalizes a persisted markdown report for history without another AI call', () => {
+    const formatted = formatEvaluationForClient({
+      ...persistedEvaluation,
+      content: '```json\n{"summary":"Persisted summary","strengths":["Clear"],"weaknesses":[],"missed_concepts":[],"follow_up_questions":["Try an example."],"confidence_score":88}\n```',
+      summary: null,
+      strengths: null,
+      weaknesses: null,
+      missedConcepts: null,
+      followUp: null,
+      confidenceScore: null,
+    });
+
+    expect(formatted.summary).toBe('Persisted summary');
+    expect(formatted.strengths).toEqual(['Clear']);
+    expect(formatted.followUp).toEqual(['Try an example.']);
+    expect(mockGenerateChatCompletion).not.toHaveBeenCalled();
   });
 
   it('reconstructs ordered student transcript entries with timestamps', async () => {

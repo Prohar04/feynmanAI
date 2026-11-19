@@ -72,7 +72,8 @@ const isText = (v: unknown): v is string => typeof v === "string" && v.trim().le
 /** The examiner's reply arrives as a JSON string; pull out what should be shown. */
 function examinerText(content: string): string | null {
 	try {
-		const data = JSON.parse(content) as Record<string, unknown>;
+		const data = parseExaminerPayload(content);
+		if (!data) return null;
 		const parts: string[] = [];
 		if (Array.isArray(data.clarifications)) parts.push(...data.clarifications.filter(isText));
 		if (isText(data.question)) parts.push(data.question);
@@ -86,12 +87,35 @@ function examinerText(content: string): string | null {
 	}
 }
 
+function parseExaminerPayload(content: string): Record<string, unknown> | null {
+	const trimmed = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+	try {
+		const parsed = JSON.parse(trimmed) as unknown;
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: null;
+	} catch {
+		return null;
+	}
+}
+
+function examinerQuestion(content: string): string | null {
+	const data = parseExaminerPayload(content);
+	if (!data) return null;
+	if (isText(data.question)) return data.question.trim();
+	if (Array.isArray(data.questions)) return data.questions.find(isText)?.trim() ?? null;
+	return null;
+}
+
 export function useLiveSession() {
 	const [state, setStateValue] = useState<LiveState>("idle");
 	const [messages, setMessages] = useState<LiveMessage[]>([]);
 	const [elapsed, setElapsed] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const [muted, setMuted] = useState(false);
+	const [speechMuted, setSpeechMuted] = useState(false);
+	const [speechSupported, setSpeechSupported] = useState(false);
+	const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
 	const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -106,6 +130,17 @@ export function useLiveSession() {
 	const sendChain = useRef<Promise<void>>(Promise.resolve());
 	const seen = useRef(new Set<string>());
 	const awaitingReply = useRef(false);
+	const speechMutedRef = useRef(false);
+	const spokenQuestions = useRef(new Set<string>());
+	const currentQuestionRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		setSpeechSupported(
+			typeof window !== "undefined" &&
+				"speechSynthesis" in window &&
+				"SpeechSynthesisUtterance" in window,
+		);
+	}, []);
 
 	const setState = useCallback((next: LiveState) => {
 		stateRef.current = next;
@@ -128,6 +163,41 @@ export function useLiveSession() {
 		seen.current.add(id);
 		setMessages((m) => [...m, { id, role, text, atSec: elapsedRef.current }]);
 	}, []);
+
+	const speakQuestion = useCallback((question: string, force = false) => {
+		const text = question.trim();
+		currentQuestionRef.current = text || currentQuestionRef.current;
+		if (text) setCurrentQuestion(text);
+		if (!text || !force && spokenQuestions.current.has(text)) return;
+		spokenQuestions.current.add(text);
+		if (modeRef.current !== "voice" || speechMutedRef.current || !speechSupported) return;
+
+		const synthesis = window.speechSynthesis;
+		synthesis.cancel();
+		const capture = captureRef.current;
+		if (capture && RUNNING.includes(stateRef.current)) capture.pause();
+
+		const utterance = new SpeechSynthesisUtterance(text);
+		utterance.onend = () => {
+			if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
+				capture.resume();
+			}
+		};
+		utterance.onerror = (event) => {
+			if (event.error !== "canceled" && event.error !== "interrupted") {
+				setError("The question could not be spoken. You can replay it or continue in text.");
+			}
+			if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
+				capture.resume();
+			}
+		};
+		try {
+			synthesis.speak(utterance);
+		} catch {
+			setError("Spoken questions are unavailable in this browser. You can continue in text.");
+			capture?.resume();
+		}
+	}, [speechSupported]);
 
 	const clearTurnTimer = () => {
 		if (turnTimer.current) clearTimeout(turnTimer.current);
@@ -196,6 +266,8 @@ export function useLiveSession() {
 				if (p?.phase === "end" || !p?.content) return;
 				const text = examinerText(p.content);
 				if (!text) return;
+				const question = examinerQuestion(p.content);
+				if (question) speakQuestion(question);
 				addMessage(`a:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`, "examiner", text);
 				if (stateRef.current === "processing" || stateRef.current === "listening") {
 					setState("replying");
@@ -240,7 +312,7 @@ export function useLiveSession() {
 				}
 			});
 		},
-		[addMessage, setState],
+		[addMessage, setState, speakQuestion],
 	);
 
 	const teardown = useCallback(() => {
@@ -251,6 +323,7 @@ export function useLiveSession() {
 		socketRef.current?.removeAllListeners();
 		socketRef.current?.disconnect();
 		socketRef.current = null;
+		if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
 		setAnalyser(null);
 	}, []);
 
@@ -261,6 +334,9 @@ export function useLiveSession() {
 			modeRef.current = config.mode;
 			setError(null);
 			setMessages([]);
+			spokenQuestions.current.clear();
+			currentQuestionRef.current = null;
+			setCurrentQuestion(null);
 			setElapsed(0);
 			seen.current.clear();
 			setState("connecting");
@@ -370,6 +446,19 @@ export function useLiveSession() {
 		});
 	}, []);
 
+	const toggleSpeechMute = useCallback(() => {
+		setSpeechMuted((mutedNow) => {
+			const next = !mutedNow;
+			speechMutedRef.current = next;
+			if (next && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+			return next;
+		});
+	}, []);
+
+	const replayQuestion = useCallback(() => {
+		if (currentQuestionRef.current) speakQuestion(currentQuestionRef.current, true);
+	}, [speakQuestion]);
+
 	const reconnect = useCallback(() => {
 		socketRef.current?.connect();
 	}, []);
@@ -413,6 +502,9 @@ export function useLiveSession() {
 		elapsed,
 		error,
 		muted,
+		speechMuted,
+		speechSupported,
+		currentQuestion,
 		analyser,
 		sessionId,
 		begin,
@@ -420,6 +512,8 @@ export function useLiveSession() {
 		pause,
 		resume,
 		toggleMute,
+		toggleSpeechMute,
+		replayQuestion,
 		reconnect,
 		end,
 	};

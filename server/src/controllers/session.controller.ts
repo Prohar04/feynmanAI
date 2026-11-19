@@ -12,7 +12,6 @@ import {
 import { getSessionMetadata } from '#src/services/session-cache.service.ts';
 import { preprocessTranscriptText } from '#src/services/transcript-preprocess.service.ts';
 import {
-  generateFinalEvaluation,
   generateRealtimeFeedback,
   ensureFinalEvaluation,
   formatEvaluationForClient,
@@ -250,14 +249,23 @@ export const requestFinalEvaluationHandler = async (
             sessionResources: metadata?.resources,
             goal: session.goal || undefined,
           })
-        : await generateFinalEvaluation({
-            sessionId,
-            subject: session.subject || undefined,
-            topic: session.topic || undefined,
-            resourceIds: session.resources.map(item => item.resourceId),
-            sessionResources: metadata?.resources,
-            goal: session.goal || undefined,
-          });
+        : session.status !== 'ENDED'
+          ? null
+          : await ensureFinalEvaluation({
+              sessionId,
+              subject: session.subject || undefined,
+              topic: session.topic || undefined,
+              resourceIds: session.resources.map(item => item.resourceId),
+              sessionResources: metadata?.resources,
+              goal: session.goal || undefined,
+            });
+
+    if (evaluationType === 'FINAL' && session.status !== 'ENDED') {
+      return sendApiError(res, {
+        status: 409,
+        message: 'End the session before generating its final report',
+      });
+    }
 
     return sendApiSuccess(res, {
       data: { evaluation },
@@ -337,7 +345,7 @@ export const getSessionReportHandler = async (
     }
 
     return sendApiSuccess(res, {
-      data: { evaluation },
+      data: { evaluation: formatEvaluationForClient(evaluation) },
     });
   } catch (error) {
     return sendApiError(res, {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Mic, MicOff, Pause, Play, Send } from "lucide-react";
+import { Mic, MicOff, Pause, Play, RotateCcw, Send, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { LiveWaveform } from "@/components/live/live-waveform";
@@ -15,7 +15,7 @@ const CHIP: Record<LiveState, { label: string; hint: string }> = {
 	connecting: { label: "Connecting", hint: "Waking the server. This can take up to a minute the first time." },
 	listening: { label: "Listening", hint: "Speak naturally. Your explanation is transcribed as you go." },
 	processing: { label: "Processing", hint: "Reading what you said and preparing a question…" },
-	replying: { label: "Examiner replying", hint: "The reply appears as text. Spoken replies come later." },
+	replying: { label: "Examiner replying", hint: "The question is being spoken. You can replay it above." },
 	paused: { label: "Paused", hint: "Take your time. Resume when you're ready." },
 	disconnected: { label: "Disconnected", hint: "We lost the connection." },
 	ending: { label: "Building your report", hint: "This can take up to a minute." },
@@ -129,6 +129,27 @@ export function LiveSession({
 					</div>
 				</div>
 				<div className="flex items-center gap-3">
+					{voice && (
+						<div className="flex items-center gap-1" aria-label="Spoken questions">
+							<button
+								onClick={live.toggleSpeechMute}
+								disabled={!live.speechSupported}
+								aria-pressed={live.speechMuted}
+								aria-label={live.speechMuted ? "Unmute spoken questions" : "Mute spoken questions"}
+								className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-surface hover:border-[#cfc9bd] disabled:opacity-40"
+							>
+								{live.speechMuted ? <VolumeX className="h-4 w-4" aria-hidden /> : <Volume2 className="h-4 w-4" aria-hidden />}
+							</button>
+							<button
+								onClick={live.replayQuestion}
+								disabled={!live.speechSupported || !live.currentQuestion || live.state === "ending"}
+								aria-label="Replay current question"
+								className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-surface hover:border-[#cfc9bd] disabled:opacity-40"
+							>
+								<RotateCcw className="h-4 w-4" aria-hidden />
+							</button>
+						</div>
+					)}
 					<span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-line bg-surface px-3 py-1.5 text-[12.5px] text-ink-2" role="status">
 						<i className={cn("h-[7px] w-[7px] rounded-full", connected ? "bg-ok" : live.state === "connecting" ? "animate-pulse bg-faint" : "bg-danger")} />
 						{connected ? "Connected" : live.state === "connecting" ? "Connecting" : "Disconnected"}

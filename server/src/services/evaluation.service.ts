@@ -136,11 +136,53 @@ type EvaluationRecord = {
 };
 
 const extractJson = (value: string): Record<string, unknown> | null => {
-  try {
-    return JSON.parse(value) as Record<string, unknown>;
-  } catch {
-    return null;
+  const source = value.trim();
+  const candidates = [
+    source.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim(),
+    source,
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      const start = candidate.indexOf('{');
+      if (start < 0) continue;
+
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      for (let index = start; index < candidate.length; index += 1) {
+        const char = candidate[index];
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (char === '\\') escaped = true;
+          else if (char === '"') inString = false;
+          continue;
+        }
+        if (char === '"') inString = true;
+        else if (char === '{') depth += 1;
+        else if (char === '}') {
+          depth -= 1;
+          if (depth === 0) {
+            try {
+              const parsed = JSON.parse(candidate.slice(start, index + 1)) as unknown;
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed as Record<string, unknown>;
+              }
+            } catch {
+              break;
+            }
+          }
+        }
+      }
+    }
   }
+
+  return null;
 };
 
 const coerceStringArray = (value: unknown): string[] => {
@@ -271,7 +313,7 @@ const parseRealtimeFeedback = (raw: string): RealtimeFeedbackPayload | null => {
   return payload;
 };
 
-const parseFinalEvaluation = (raw: string): FinalEvaluationPayload | null => {
+export const parseFinalEvaluation = (raw: string): FinalEvaluationPayload | null => {
   const parsed = extractJson(raw);
   if (!parsed) {
     return null;
@@ -279,16 +321,26 @@ const parseFinalEvaluation = (raw: string): FinalEvaluationPayload | null => {
 
   const summary = typeof parsed.summary === 'string' ? parsed.summary : '';
   const confidenceScore = coerceNumber(parsed.confidence_score);
-  if (!summary.trim() || confidenceScore === null) {
+  if (
+    !summary.trim() ||
+    confidenceScore === null ||
+    confidenceScore < 0 ||
+    confidenceScore > 100
+  ) {
     return null;
   }
+
+  const followUpValue =
+    parsed.follow_up_questions === undefined
+      ? parsed.follow_up
+      : parsed.follow_up_questions;
 
   const payload = {
     summary,
     strengths: coerceStringArray(parsed.strengths),
     weaknesses: coerceStringArray(parsed.weaknesses),
     missed_concepts: coerceStringArray(parsed.missed_concepts),
-    follow_up: coerceStringArray(parsed.follow_up),
+    follow_up: coerceStringArray(followUpValue),
     confidence_score: confidenceScore,
     topic_drift: coerceBoolean(parsed.topic_drift),
     cited_evidence: coerceStringArray(parsed.cited_evidence),
@@ -319,9 +371,7 @@ const fallbackRealtimeFeedback = (raw: string): RealtimeFeedbackPayload => {
 };
 
 const fallbackFinalEvaluation = (raw: string): FinalEvaluationPayload => ({
-  summary:
-    truncateText(raw, 700) ||
-    'Final evaluation could not be parsed, but the session completed.',
+  summary: 'This report is temporarily unavailable. Please retry generation.',
   strengths: [],
   weaknesses: [],
   missed_concepts: [],
@@ -681,8 +731,12 @@ export const formatEvaluationForClient = <T extends EvaluationRecord>(
   }
 
   const parsed = parseFinalEvaluation(evaluation.content);
+  const persistedSummary = evaluation.summary?.trim() || '';
+  const safePersistedSummary = /^(?:```|\s*[\[{])/.test(persistedSummary)
+    ? ''
+    : persistedSummary;
   const persistedFallback: FinalEvaluationPayload = {
-    summary: evaluation.summary || '',
+    summary: safePersistedSummary,
     strengths: coerceStringArray(evaluation.strengths),
     weaknesses: coerceStringArray(evaluation.weaknesses),
     missed_concepts: coerceStringArray(evaluation.missedConcepts),
@@ -699,11 +753,21 @@ export const formatEvaluationForClient = <T extends EvaluationRecord>(
 
   return {
     ...evaluation,
+    summary: structured.summary,
+    strengths: structured.strengths,
+    weaknesses: structured.weaknesses,
+    missedConcepts: structured.missed_concepts,
+    followUp: structured.follow_up,
+    confidenceScore: structured.confidence_score,
+    topicDrift: structured.topic_drift,
     structured,
     citations,
     citedEvidence,
     rubric,
-    rawContent: JSON.stringify(structured),
+    rawContent: JSON.stringify({
+      ...structured,
+      follow_up_questions: structured.follow_up,
+    }),
     analytics: metadata.analytics,
   };
 };
@@ -919,7 +983,15 @@ export const generateFinalEvaluation = async (params: {
   );
 
   const parsed = parseFinalEvaluation(completion.content);
-  const structured = parsed || fallbackFinalEvaluation(completion.content);
+  if (!parsed) {
+    logger.warn('Final evaluation response was incomplete or invalid', {
+      sessionId: params.sessionId,
+      provider: completion.provider,
+      model: completion.model,
+    });
+    throw new Error('Final evaluation response was incomplete or invalid');
+  }
+  const structured = parsed;
   const contextTexts = getContextTexts(context);
   const citations = getCitations(context);
   const transcriptAnalytics = analyzeTranscriptQuality({
@@ -935,7 +1007,10 @@ export const generateFinalEvaluation = async (params: {
     data: {
       sessionId: params.sessionId,
       type: 'FINAL',
-      content: JSON.stringify(structured),
+      content: JSON.stringify({
+        ...structured,
+        follow_up_questions: structured.follow_up,
+      }),
       summary: structured.summary,
       strengths: structured.strengths,
       weaknesses: structured.weaknesses,
@@ -982,7 +1057,10 @@ export const generateFinalEvaluation = async (params: {
 
   return {
     ...formatEvaluationForClient(evaluation),
-    rawContent: JSON.stringify(structured),
+    rawContent: JSON.stringify({
+      ...structured,
+      follow_up_questions: structured.follow_up,
+    }),
   };
 };
 

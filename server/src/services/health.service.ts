@@ -51,15 +51,20 @@ const checkDatabase = () =>
 
 const checkRedis = () =>
   withTiming(async () => {
-    const client = redis.createClient({
-      username: 'default',
-      password: env.REDIS_PASSWORD,
-      socket: {
-        host: env.REDIS_HOST || '127.0.0.1',
-        port: Number(env.REDIS_PORT || 6379),
-      },
-      database: env.REDIS_DB,
-    });
+    // Match the connection strategy used by the application and queues.
+    // Managed Redis providers expose REDIS_URL; falling back to host/port is
+    // still useful for local development.
+    const client = env.REDIS_URL
+      ? redis.createClient({ url: env.REDIS_URL })
+      : redis.createClient({
+          username: 'default',
+          password: env.REDIS_PASSWORD,
+          socket: {
+            host: env.REDIS_HOST || '127.0.0.1',
+            port: Number(env.REDIS_PORT || 6379),
+          },
+          database: env.REDIS_DB,
+        });
 
     try {
       await client.connect();
