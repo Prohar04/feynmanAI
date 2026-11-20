@@ -23,6 +23,7 @@ import {
   rateLimitPresets,
 } from '#src/middlewares/rate-limit.middleware.ts';
 import pingRoutes from './routes/ping.route.ts';
+import ttsRoutes from './routes/tts.route.ts';
 import { getAllowedOrigins } from '#config/cors.ts';
 
 const app = express();
@@ -103,6 +104,7 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/parser', documentParserRoutes);
+app.use('/api/tts', ttsRoutes);
 
 app.use((req, res) => {
   sendApiError(res, { status: 404, message: 'Route not found' });

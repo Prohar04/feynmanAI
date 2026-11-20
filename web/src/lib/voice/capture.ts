@@ -13,10 +13,11 @@ export type Segment = { blob: Blob; mimeType: string; startMs: number; endMs: nu
 export type CaptureEvents = {
 	onSegment: (segment: Segment) => void;
 	onSpeechStart: () => void;
+	onSpeechEnd: () => void;
 };
 
 const TICK_MS = 50;
-const SILENCE_MS = 1400; // quiet this long ends an utterance
+const SILENCE_MS = 3000; // quiet this long ends a user turn
 const MIN_VOICED_MS = 400; // ignore clicks and breaths
 const MAX_SEGMENT_MS = 20_000; // keeps each upload well under the socket limit
 const IDLE_DISCARD_MS = 30_000; // a segment with no speech is thrown away
@@ -194,7 +195,10 @@ export class VoiceCapture {
 		}
 
 		const length = now - seg.startMs;
-		if (seg.hadVoice && now - this.lastVoiceAt > SILENCE_MS) this.cut(true, true);
+		if (seg.hadVoice && now - this.lastVoiceAt > SILENCE_MS) {
+			this.cut(true, true);
+			this.events.onSpeechEnd();
+		}
 		else if (seg.hadVoice && length > MAX_SEGMENT_MS) this.cut(true, true);
 		else if (!seg.hadVoice && length > IDLE_DISCARD_MS) this.cut(false, true);
 	}

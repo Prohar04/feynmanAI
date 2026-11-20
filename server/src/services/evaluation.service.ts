@@ -75,6 +75,7 @@ type RealtimeFeedbackPayload = {
   clarifications: string[];
   detected_gaps: string[];
   topic_drift: boolean;
+  input_violation: boolean;
   citations: string[];
 };
 
@@ -307,6 +308,7 @@ const parseRealtimeFeedback = (raw: string): RealtimeFeedbackPayload | null => {
     clarifications: coerceStringArray(parsed.clarifications),
     detected_gaps: coerceStringArray(parsed.detected_gaps),
     topic_drift: coerceBoolean(parsed.topic_drift),
+    input_violation: coerceBoolean(parsed.input_violation),
     citations: coerceStringArray(parsed.citations),
   };
 
@@ -366,6 +368,7 @@ const fallbackRealtimeFeedback = (raw: string): RealtimeFeedbackPayload => {
     clarifications: [],
     detected_gaps: [],
     topic_drift: false,
+    input_violation: false,
     citations: [],
   };
 };
@@ -520,7 +523,7 @@ const buildRealtimeMessages = (params: {
       content:
         `${params.systemPrompt}\n` +
         'Return valid JSON only.\n' +
-        'Response schema: {"question": string, "clarifications": string[], "detected_gaps": string[], "topic_drift": boolean, "citations": string[] }.\n' +
+        'Response schema: {"question": string, "clarifications": string[], "detected_gaps": string[], "topic_drift": boolean, "input_violation": boolean, "citations": string[] }.\n' +
         'Never return arrays of questions. Merge internal options into one best question.',
     },
     {
@@ -534,9 +537,10 @@ const buildRealtimeMessages = (params: {
         `Learning materials:\n${contextBlock}\n\n` +
         `Available citation ids: ${citationIds || 'none'}\n\n` +
         'Return JSON with keys: question (single string), clarifications (0-2 strings), ' +
-        'detected_gaps (0-4 strings), topic_drift (boolean), citations (citation ids used). ' +
+        'detected_gaps (0-4 strings), topic_drift (boolean), input_violation (boolean), citations (citation ids used). ' +
         'Ask exactly one question only using the question scope rules. ' +
         'Evaluate the user answer using evaluation scope rules. ' +
+        'Set input_violation to true only when the latest user message contains abusive/profane or deliberately disruptive slang, or is clearly unrelated to the active learning topic. Do not flag ordinary informal wording, uncertainty, mistakes, or a relevant example. When true, use a brief respectful reminder as the question and do not continue probing the answer. ' +
         'Do not teach, solve, explain, or add text outside JSON. ' +
         'If failedAttempts is 5 or more, trigger mastery fallback behavior in the answer.',
     },
@@ -616,7 +620,7 @@ const buildStartMessages = (params: {
       content:
         `${params.systemPrompt}\n` +
         'Return valid JSON only.\n' +
-        'Response schema: {"question": string, "clarifications": string[], "detected_gaps": string[], "topic_drift": boolean, "citations": string[] }.\n' +
+        'Response schema: {"question": string, "clarifications": string[], "detected_gaps": string[], "topic_drift": boolean, "input_violation": boolean, "citations": string[] }.\n' +
         'Never return questions arrays.',
     },
     {
@@ -711,6 +715,7 @@ export const formatEvaluationForClient = <T extends EvaluationRecord>(
       clarifications: coerceStringArray(followUp.clarifications),
       detected_gaps: coerceStringArray(evaluation.weaknesses),
       topic_drift: Boolean(evaluation.topicDrift),
+      input_violation: false,
       citations: citedEvidence,
     };
     const structured: RealtimeFeedbackPayload =

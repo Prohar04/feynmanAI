@@ -71,6 +71,17 @@ EMBEDDING_PROVIDER=...
 EMBEDDING_MODEL=...
 QDRANT_URL=...
 QDRANT_API_KEY=...
+
+# Voice sessions generate speech before emitting the examiner response.
+TTS_PROVIDER=local
+QWEN_TTS_BASE_URL=http://localhost:8000/v1
+QWEN_TTS_MODEL=Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice
+QWEN_DASHSCOPE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_API_KEY=...
+TTS_ENABLED=true
+TTS_MAX_CHARS=600
+TTS_TIMEOUT_MS=30000
+TTS_MAX_RETRIES=2
 ```
 
 ### 1. Create a ready resource

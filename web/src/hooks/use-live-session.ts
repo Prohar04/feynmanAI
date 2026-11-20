@@ -38,8 +38,9 @@ type Ack = { ok: boolean; error?: string; session?: { id: string } };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 const WS_PATH = process.env.NEXT_PUBLIC_WS_PATH ?? "/ws";
-const TURN_MS = 2200; // quiet this long after speaking means "your turn, examiner"
 const CONNECT_TIMEOUT_MS = 75_000; // the free-tier API can take about a minute to wake
+const GUARDRAIL_PAUSE_MS = 4500;
+const GUARDRAIL_MESSAGE = "Please keep your language respectful and stay on the current topic. You may continue when ready.";
 const RUNNING: LiveState[] = ["listening", "processing", "replying"];
 
 async function fetchSocketToken(): Promise<string> {
@@ -107,6 +108,11 @@ function examinerQuestion(content: string): string | null {
 	return null;
 }
 
+function examinerInputViolation(content: string): boolean {
+	const data = parseExaminerPayload(content);
+	return data?.input_violation === true;
+}
+
 export function useLiveSession() {
 	const [state, setStateValue] = useState<LiveState>("idle");
 	const [messages, setMessages] = useState<LiveMessage[]>([]);
@@ -114,7 +120,9 @@ export function useLiveSession() {
 	const [error, setError] = useState<string | null>(null);
 	const [muted, setMuted] = useState(false);
 	const [speechMuted, setSpeechMuted] = useState(false);
-	const [speechSupported, setSpeechSupported] = useState(false);
+	const [speechSupported] = useState(
+		() => typeof window !== "undefined" && typeof Audio !== "undefined",
+	);
 	const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
 	const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
 	const [sessionId, setSessionId] = useState<string | null>(null);
@@ -127,20 +135,17 @@ export function useLiveSession() {
 	const elapsedRef = useRef(0);
 	const turnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const guardrailTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const sendChain = useRef<Promise<void>>(Promise.resolve());
+	const turnEnded = useRef(false);
+	const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+	const speechUrlRef = useRef<string | null>(null);
 	const seen = useRef(new Set<string>());
 	const awaitingReply = useRef(false);
 	const speechMutedRef = useRef(false);
 	const spokenQuestions = useRef(new Set<string>());
 	const currentQuestionRef = useRef<string | null>(null);
-
-	useEffect(() => {
-		setSpeechSupported(
-			typeof window !== "undefined" &&
-				"speechSynthesis" in window &&
-				"SpeechSynthesisUtterance" in window,
-		);
-	}, []);
+	const pendingSpeech = useRef<{ question: string; audioBase64: string; mimeType: string } | null>(null);
 
 	const setState = useCallback((next: LiveState) => {
 		stateRef.current = next;
@@ -164,70 +169,39 @@ export function useLiveSession() {
 		setMessages((m) => [...m, { id, role, text, atSec: elapsedRef.current }]);
 	}, []);
 
-	const speakQuestion = useCallback((question: string, force = false) => {
+	const stopSpeech = useCallback(() => {
+		speechAudioRef.current?.pause();
+		if (speechAudioRef.current) speechAudioRef.current.currentTime = 0;
+		if (speechUrlRef.current) URL.revokeObjectURL(speechUrlRef.current);
+		speechAudioRef.current = null;
+		speechUrlRef.current = null;
+	}, []);
+
+	const speakQuestion = useCallback((question: string, audioBase64?: string, mimeType = "audio/wav", force = false) => {
 		const text = question.trim();
 		currentQuestionRef.current = text || currentQuestionRef.current;
 		if (text) setCurrentQuestion(text);
 		if (!text || !force && spokenQuestions.current.has(text)) return;
+		if (audioBase64) pendingSpeech.current = { question: text, audioBase64, mimeType };
 		// Keep the question pending until speech support has been detected. The
 		// opening examiner question can arrive immediately after the socket starts,
 		// before the capability-detection effect has run.
-		if (modeRef.current !== "voice" || speechMutedRef.current || !speechSupported) return;
+		if (modeRef.current !== "voice" || speechMutedRef.current || !speechSupported || !audioBase64) return;
 		spokenQuestions.current.add(text);
-
-		const synthesis = window.speechSynthesis;
-		const speakNow = () => {
-			synthesis.cancel();
-			synthesis.resume();
-			const capture = captureRef.current;
-			if (capture && RUNNING.includes(stateRef.current)) capture.pause();
-
-			const utterance = new SpeechSynthesisUtterance(text);
-			utterance.onend = () => {
-				if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
-					capture.resume();
-				}
-			};
-			utterance.onerror = (event) => {
-				if (event.error !== "canceled" && event.error !== "interrupted") {
-					setError("The question could not be spoken. You can replay it or continue in text.");
-				}
-				if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
-					capture.resume();
-				}
-			};
-			try {
-				synthesis.speak(utterance);
-				synthesis.resume();
-			} catch {
-				setError("Spoken questions are unavailable in this browser. You can continue in text.");
-				capture?.resume();
-			}
-		};
-
-		// Chrome and Safari can report speech support before their voice list has
-		// loaded. Waiting for this event prevents the first question from being
-		// queued until a later reload.
-		if (synthesis.getVoices().length === 0) {
-			let started = false;
-			const startOnce = () => {
-				if (started) return;
-				started = true;
-				synthesis.removeEventListener("voiceschanged", startOnce);
-				speakNow();
-			};
-			synthesis.addEventListener("voiceschanged", startOnce);
-			window.setTimeout(startOnce, 500);
-			return;
-		}
-
-		speakNow();
-	}, [speechSupported]);
+		stopSpeech();
+		const bytes = Uint8Array.from(atob(audioBase64), (char) => char.charCodeAt(0));
+		const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+		const audio = new Audio(url);
+		speechUrlRef.current = url;
+		speechAudioRef.current = audio;
+		audio.onended = stopSpeech;
+		void audio.play().catch(() => setError("The question could not be played. You can replay it or continue in text."));
+	}, [speechSupported, stopSpeech]);
 
 	useEffect(() => {
-		const question = currentQuestionRef.current;
-		if (!speechSupported || modeRef.current !== "voice" || !question || speechMutedRef.current) return;
-		speakQuestion(question);
+		const pending = pendingSpeech.current;
+		if (!speechSupported || modeRef.current !== "voice" || !pending || speechMutedRef.current) return;
+		speakQuestion(pending.question, pending.audioBase64, pending.mimeType);
 	}, [speakQuestion, speechSupported]);
 
 	const clearTurnTimer = () => {
@@ -253,11 +227,6 @@ export function useLiveSession() {
 		}
 	}, [setState]);
 
-	const scheduleTurn = useCallback(() => {
-		clearTurnTimer();
-		turnTimer.current = setTimeout(() => void requestReply(), TURN_MS);
-	}, [requestReply]);
-
 	const uploadSegment = useCallback(
 		(segment: Segment) => {
 			// One at a time and in order, so the transcript reads in the order it was spoken.
@@ -277,13 +246,16 @@ export function useLiveSession() {
 						endTimeMs: segment.endMs,
 					});
 					if (!ack.ok) throw new Error(ack.error ?? "Couldn't transcribe that.");
-					if (stateRef.current === "listening") scheduleTurn();
+					if (turnEnded.current) {
+						turnEnded.current = false;
+						void requestReply();
+					}
 				} catch (e) {
 					setError(e instanceof Error ? e.message : "Couldn't send your audio.");
 				}
 			});
 		},
-		[scheduleTurn],
+		[requestReply],
 	);
 
 	const attachListeners = useCallback(
@@ -293,15 +265,32 @@ export function useLiveSession() {
 				if (chunk?.id && isText(chunk.text)) addMessage(`t:${chunk.id}`, "user", chunk.text.trim());
 			});
 
-			socket.on("llm:response", (p: { phase?: string; content?: string }) => {
+			socket.on("llm:response", (p: { phase?: string; content?: string; speech?: { audioBase64?: string; mimeType?: string } | null }) => {
 				if (p?.phase === "end" || !p?.content) return;
-				const text = examinerText(p.content);
+				const guardrail = examinerInputViolation(p.content);
+				const text = guardrail ? GUARDRAIL_MESSAGE : examinerText(p.content);
 				if (!text) return;
 				const question = examinerQuestion(p.content);
 				addMessage(`a:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`, "examiner", text);
+
+				if (guardrail) {
+					clearTurnTimer();
+					captureRef.current?.pause();
+					setState("paused");
+					if (guardrailTimer.current) clearTimeout(guardrailTimer.current);
+					window.requestAnimationFrame(() => speakQuestion(GUARDRAIL_MESSAGE, p.speech?.audioBase64, p.speech?.mimeType, true));
+					guardrailTimer.current = setTimeout(() => {
+						if (stateRef.current === "paused") {
+							captureRef.current?.resume();
+							setState("listening");
+						}
+					}, GUARDRAIL_PAUSE_MS);
+					return;
+				}
+
 				// Let React paint the examiner's text first, then start audio on the
 				// next frame so the visual reply and spoken reply begin together.
-				if (question) window.requestAnimationFrame(() => speakQuestion(question));
+				if (question) window.requestAnimationFrame(() => speakQuestion(question, p.speech?.audioBase64, p.speech?.mimeType));
 				if (stateRef.current === "processing" || stateRef.current === "listening") {
 					setState("replying");
 					if (replyTimer.current) clearTimeout(replyTimer.current);
@@ -351,14 +340,15 @@ export function useLiveSession() {
 	const teardown = useCallback(() => {
 		clearTurnTimer();
 		if (replyTimer.current) clearTimeout(replyTimer.current);
+		if (guardrailTimer.current) clearTimeout(guardrailTimer.current);
 		captureRef.current?.stop();
 		captureRef.current = null;
 		socketRef.current?.removeAllListeners();
 		socketRef.current?.disconnect();
 		socketRef.current = null;
-		if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+		stopSpeech();
 		setAnalyser(null);
-	}, []);
+	}, [stopSpeech]);
 
 	useEffect(() => teardown, [teardown]);
 
@@ -368,6 +358,7 @@ export function useLiveSession() {
 			setError(null);
 			setMessages([]);
 			spokenQuestions.current.clear();
+			pendingSpeech.current = null;
 			currentQuestionRef.current = null;
 			setCurrentQuestion(null);
 			setElapsed(0);
@@ -416,7 +407,15 @@ export function useLiveSession() {
 
 				if (config.mode === "voice") {
 					const capture = new VoiceCapture({
-						onSpeechStart: clearTurnTimer, // still talking: the examiner waits
+						onSpeechStart: () => {
+							turnEnded.current = false;
+							stopSpeech();
+							clearTurnTimer();
+							if (stateRef.current === "replying") setState("listening");
+						},
+						onSpeechEnd: () => {
+							turnEnded.current = true;
+						},
 						onSegment: uploadSegment,
 					});
 					await capture.start();
@@ -429,8 +428,8 @@ export function useLiveSession() {
 				setError(e instanceof Error ? e.message : "Couldn't start the session.");
 				setState("error");
 			}
-		},
-		[attachListeners, setState, teardown, uploadSegment],
+			},
+			[attachListeners, setState, stopSpeech, teardown, uploadSegment],
 	);
 
 	const sendText = useCallback(
@@ -483,13 +482,16 @@ export function useLiveSession() {
 		setSpeechMuted((mutedNow) => {
 			const next = !mutedNow;
 			speechMutedRef.current = next;
-			if (next && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+			if (next) stopSpeech();
 			return next;
 		});
-	}, []);
+	}, [stopSpeech]);
 
 	const replayQuestion = useCallback(() => {
-		if (currentQuestionRef.current) speakQuestion(currentQuestionRef.current, true);
+		const pending = pendingSpeech.current;
+		if (pending && currentQuestionRef.current) {
+			speakQuestion(currentQuestionRef.current, pending.audioBase64, pending.mimeType, true);
+		}
 	}, [speakQuestion]);
 
 	const reconnect = useCallback(() => {

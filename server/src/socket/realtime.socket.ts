@@ -21,6 +21,7 @@ import {
 import { preprocessTranscriptText } from '#src/services/transcript-preprocess.service.ts';
 import { env } from '#config/env.ts';
 import logger from '#config/logger.ts';
+import { synthesizeSpeech } from '#src/services/tts.service.ts';
 
 const getTokenFromSocket = (socket: Socket): string | null => {
   const authToken = socket.handshake.auth?.token;
@@ -76,16 +77,55 @@ export const registerRealtimeSocket = (io: Server) => {
     }
   });
 
-  const emitLlmResponse = (
+  const emitLlmResponse = async (
     sessionId: string,
     phase: 'start' | 'realtime' | 'end',
     content: string
   ) => {
+    // Do not emit the visible answer until its audio has been generated.
+    // The client can therefore render and play one synchronized response.
+    const text = extractSpeechText(content);
+    let speech: {
+      audioBase64: string;
+      mimeType: string;
+    } | null = null;
+    if (phase !== 'end') {
+      try {
+        const result = await synthesizeSpeech({ text });
+        speech = {
+          audioBase64: result.buffer.toString('base64'),
+          mimeType: result.mimeType,
+        };
+      } catch (error) {
+        logger.warn('TTS generation failed; delivering text response', {
+          error,
+          phase,
+        });
+      }
+    }
     io.to(sessionId).emit('llm:response', {
       sessionId,
       phase,
       content,
+      speech,
     });
+  };
+
+  const extractSpeechText = (content: string): string => {
+    try {
+      const parsed = JSON.parse(content) as {
+        question?: string;
+        clarifications?: string[];
+      };
+      return [
+        ...(parsed.clarifications || []),
+        parsed.question || '',
+      ]
+        .filter(value => typeof value === 'string' && value.trim())
+        .join('\n\n');
+    } catch {
+      return content.trim();
+    }
   };
 
   const normalizeState = (
@@ -302,7 +342,11 @@ export const registerRealtimeSocket = (io: Server) => {
           'realtime'
         );
       }
-      emitLlmResponse(params.sessionId, 'realtime', evaluation.rawContent);
+      await emitLlmResponse(
+        params.sessionId,
+        'realtime',
+        evaluation.rawContent
+      );
     }
 
     return evaluation;
@@ -375,7 +419,7 @@ export const registerRealtimeSocket = (io: Server) => {
       });
 
       if (evaluation?.rawContent) {
-        emitLlmResponse(payload.sessionId, 'end', evaluation.rawContent);
+        await emitLlmResponse(payload.sessionId, 'end', evaluation.rawContent);
       }
 
       cb?.({ ok: true });
@@ -451,7 +495,7 @@ export const registerRealtimeSocket = (io: Server) => {
           failedAttempts: 0,
           triggerMasteryFallback: false,
         });
-        emitLlmResponse(session.id, 'start', startResponse.content);
+        await emitLlmResponse(session.id, 'start', startResponse.content);
         cb?.({ ok: true, session });
       } catch (error) {
         logger.error('Realtime session start failed', { error });
@@ -514,10 +558,7 @@ export const registerRealtimeSocket = (io: Server) => {
           chunk,
         });
 
-        if (
-          payload?.endMessage !== 'user:pause' &&
-          payload?.endMessage !== 'user:end'
-        ) {
+        if (payload?.turnEnded === true) {
           scheduleRealtimeResponse({
             sessionId,
             userId: socket.data.userId,
