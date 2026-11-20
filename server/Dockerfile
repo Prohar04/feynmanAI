@@ -23,8 +23,8 @@ ENV PYTHONUNBUFFERED=1
 
 FROM base AS deps
 
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --no-cache --backend=copyfile
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 FROM deps AS build
 
@@ -54,7 +54,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/.venv-markitdown ./.venv-markitdown
 COPY --from=build /app/.markitdown-src ./.markitdown-src
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/bun.lock ./bun.lock
+COPY --from=build /app/package-lock.json ./package-lock.json
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/modifiedprompt.ts ./modifiedprompt.ts
