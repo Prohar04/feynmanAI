@@ -37,6 +37,12 @@ export function SessionSetup({
 
 	function submit(e: React.FormEvent) {
 		e.preventDefault();
+		if (voice && typeof window !== "undefined" && "speechSynthesis" in window) {
+			// Browsers may require speech to be resumed from a user gesture before
+			// allowing a later asynchronous socket response to speak.
+			window.speechSynthesis.cancel();
+			window.speechSynthesis.resume();
+		}
 		onStart({
 			mode,
 			subject: subject.trim() || undefined,

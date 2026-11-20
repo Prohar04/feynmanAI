@@ -276,8 +276,10 @@ export function useLiveSession() {
 				const text = examinerText(p.content);
 				if (!text) return;
 				const question = examinerQuestion(p.content);
-				if (question) speakQuestion(question);
 				addMessage(`a:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`, "examiner", text);
+				// Let React paint the examiner's text first, then start audio on the
+				// next frame so the visual reply and spoken reply begin together.
+				if (question) window.requestAnimationFrame(() => speakQuestion(question));
 				if (stateRef.current === "processing" || stateRef.current === "listening") {
 					setState("replying");
 					if (replyTimer.current) clearTimeout(replyTimer.current);
