@@ -143,7 +143,7 @@ services:
       # Drives CORS and the Socket.IO origin allowlist.
       # localhost:3000/3001/5173 are always allowed by server.ts.
       - key: FRONTEND_URL
-        sync: false
+        value: https://www.feynmanai.tech
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
