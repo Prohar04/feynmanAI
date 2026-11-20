@@ -5,7 +5,11 @@ import express from 'express';
 
 // Local development uses TTS_PORT=8125; Render injects PORT for its web service.
 const PORT = Number(process.env.TTS_PORT || process.env.PORT || 8125);
-const JOB_TIMEOUT_MS = 30_000;
+const DEFAULT_JOB_TIMEOUT_MS = 30_000;
+const configuredJobTimeout = Number(process.env.TTS_JOB_TIMEOUT_MS);
+const JOB_TIMEOUT_MS = Number.isFinite(configuredJobTimeout) && configuredJobTimeout > 0
+  ? configuredJobTimeout
+  : DEFAULT_JOB_TIMEOUT_MS;
 const WORKER_RESTART_BACKOFF_MS = 1_000;
 const MAX_TEXT_LENGTH = 500;
 const DEFAULT_VOICE = 'af_heart';
