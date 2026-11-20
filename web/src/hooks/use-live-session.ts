@@ -169,8 +169,11 @@ export function useLiveSession() {
 		currentQuestionRef.current = text || currentQuestionRef.current;
 		if (text) setCurrentQuestion(text);
 		if (!text || !force && spokenQuestions.current.has(text)) return;
-		spokenQuestions.current.add(text);
+		// Keep the question pending until speech support has been detected. The
+		// opening examiner question can arrive immediately after the socket starts,
+		// before the capability-detection effect has run.
 		if (modeRef.current !== "voice" || speechMutedRef.current || !speechSupported) return;
+		spokenQuestions.current.add(text);
 
 		const synthesis = window.speechSynthesis;
 		synthesis.cancel();
@@ -198,6 +201,12 @@ export function useLiveSession() {
 			capture?.resume();
 		}
 	}, [speechSupported]);
+
+	useEffect(() => {
+		const question = currentQuestionRef.current;
+		if (!speechSupported || modeRef.current !== "voice" || !question || speechMutedRef.current) return;
+		speakQuestion(question);
+	}, [speakQuestion, speechSupported]);
 
 	const clearTurnTimer = () => {
 		if (turnTimer.current) clearTimeout(turnTimer.current);

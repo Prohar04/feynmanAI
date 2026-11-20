@@ -126,7 +126,11 @@ export function SessionSetup({
 							</>
 						)}
 					</ol>
-					<p className="mt-4 text-mute">The examiner&apos;s replies appear as text. Spoken replies are not available yet.</p>
+					<p className="mt-4 text-mute">
+						{voice
+							? "The examiner's questions are spoken automatically. Use the speaker button to mute or replay them."
+							: "The examiner's replies appear as text."}
+					</p>
 				</aside>
 			</div>
 		</Page>
