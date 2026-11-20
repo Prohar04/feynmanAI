@@ -25,7 +25,9 @@ ENV PYTHONUNBUFFERED=1
 FROM base AS deps
 
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# Render runs this service with CPU inference. Prevent onnxruntime-node from
+# attempting to download its optional CUDA binary during dependency install.
+RUN npm_config_onnxruntime_node_install_cuda=skip npm ci --no-audit --no-fund
 
 FROM deps AS build
 

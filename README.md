@@ -4,6 +4,11 @@
 
 Feynman AI is an AI-powered learning platform built around the Feynman Technique. It asks learners to explain what they know, checks their reasoning against their own study material, and exposes the gaps that matter.
 
+## Live
+
+- **Web app:** [www.feynmanai.tech](https://www.feynmanai.tech)
+- **API:** [api.feynmanai.tech](https://api.feynmanai.tech)
+
 ## Product loop
 
 ```text
