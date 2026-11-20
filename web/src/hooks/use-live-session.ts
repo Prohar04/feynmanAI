@@ -176,30 +176,52 @@ export function useLiveSession() {
 		spokenQuestions.current.add(text);
 
 		const synthesis = window.speechSynthesis;
-		synthesis.cancel();
-		const capture = captureRef.current;
-		if (capture && RUNNING.includes(stateRef.current)) capture.pause();
+		const speakNow = () => {
+			synthesis.cancel();
+			synthesis.resume();
+			const capture = captureRef.current;
+			if (capture && RUNNING.includes(stateRef.current)) capture.pause();
 
-		const utterance = new SpeechSynthesisUtterance(text);
-		utterance.onend = () => {
-			if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
-				capture.resume();
+			const utterance = new SpeechSynthesisUtterance(text);
+			utterance.onend = () => {
+				if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
+					capture.resume();
+				}
+			};
+			utterance.onerror = (event) => {
+				if (event.error !== "canceled" && event.error !== "interrupted") {
+					setError("The question could not be spoken. You can replay it or continue in text.");
+				}
+				if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
+					capture.resume();
+				}
+			};
+			try {
+				synthesis.speak(utterance);
+				synthesis.resume();
+			} catch {
+				setError("Spoken questions are unavailable in this browser. You can continue in text.");
+				capture?.resume();
 			}
 		};
-		utterance.onerror = (event) => {
-			if (event.error !== "canceled" && event.error !== "interrupted") {
-				setError("The question could not be spoken. You can replay it or continue in text.");
-			}
-			if (capture && stateRef.current !== "paused" && stateRef.current !== "ending" && stateRef.current !== "error") {
-				capture.resume();
-			}
-		};
-		try {
-			synthesis.speak(utterance);
-		} catch {
-			setError("Spoken questions are unavailable in this browser. You can continue in text.");
-			capture?.resume();
+
+		// Chrome and Safari can report speech support before their voice list has
+		// loaded. Waiting for this event prevents the first question from being
+		// queued until a later reload.
+		if (synthesis.getVoices().length === 0) {
+			let started = false;
+			const startOnce = () => {
+				if (started) return;
+				started = true;
+				synthesis.removeEventListener("voiceschanged", startOnce);
+				speakNow();
+			};
+			synthesis.addEventListener("voiceschanged", startOnce);
+			window.setTimeout(startOnce, 500);
+			return;
 		}
+
+		speakNow();
 	}, [speechSupported]);
 
 	useEffect(() => {
