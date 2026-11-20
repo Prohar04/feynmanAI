@@ -8,6 +8,10 @@ export const metadata: Metadata = {
 	},
 	description:
 		"Explain what you're learning out loud and get questions that find the gaps. An AI examiner built on the Feynman Technique.",
+	icons: {
+		icon: "/icon.svg",
+		shortcut: "/icon.svg",
+	},
 };
 
 export const viewport: Viewport = {
