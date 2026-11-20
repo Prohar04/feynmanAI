@@ -1,149 +1,241 @@
 # Feynman AI
 
-An AI-powered learning platform where you learn by **teaching**.
+> Learn by explaining. Mastery appears where your explanation breaks.
 
-Instead of explaining concepts to you, Feynman AI makes *you* explain them out loud. It listens, transcribes your speech in real time, retrieves relevant context from the material you uploaded, and asks probing follow-up questions to find the gaps in your understanding — then grades how well you actually know the topic.
+Feynman AI is an AI-powered learning platform built around the Feynman Technique. It asks learners to explain what they know, checks their reasoning against their own study material, and exposes the gaps that matter.
 
-It is deliberately **not** a general-purpose chatbot. Its job is to evaluate understanding, probe reasoning, and surface conceptual gaps.
+## Product loop
 
-## Live
-
-| | URL |
-|---|---|
-| Web app | not deployed — being rebuilt |
-| API | https://api.feynmanai.tech |
-
-## The core loop
-
+```text
+Add material → Parse, chunk, embed, and index
+           → Explain by voice or text
+           → Transcribe and analyze
+           → Ask grounded follow-up questions
+           → Review strengths, gaps, evidence, and next steps
 ```
-upload learning resource
-  → parse / chunk / embed content
-  → start speaking session
-  → transcribe explanation in real time
-  → retrieve relevant resource context
-  → ask probing questions
-  → generate final understanding report
-```
+
+## Highlights
+
+- Voice-first learning sessions over Socket.IO, with text fallback.
+- Retrieval grounded in uploaded PDF, DOCX, PPTX, TXT, Markdown, and image content.
+- Real-time speech-to-text and AI-generated probing questions.
+- Final reports covering confidence, strengths, weaknesses, missed concepts, and follow-up topics.
+- Kokoro-82M local text-to-speech on a non-blocking worker thread with FIFO queueing.
+- Password and Google OAuth authentication.
+- Redis-backed background queues for audio and URL ingestion.
 
 ## Architecture
 
-| Layer | Stack | Hosting |
-|---|---|---|
-| Frontend | Next.js 16 (App Router), React 19, Tailwind, TypeScript | Vercel |
-| API | Express, Socket.IO, TypeScript, Bun | Render (Docker) |
-| Background worker | BullMQ (audio processing, URL ingest) | same container as the API |
-| Database | PostgreSQL via Prisma | Render Postgres |
-| Queue / cache | Redis | Render Key Value |
-| Document parsing | Python + [MarkItDown](https://github.com/microsoft/markitdown) | baked into the API image |
+```text
+┌──────────────────────┐
+│ Next.js web app      │ React 19 · App Router · Tailwind · TypeScript
+└──────────┬───────────┘
+           │ HTTP / Socket.IO
+           ▼
+┌──────────────────────┐       ┌─────────────────────┐
+│ Express API          │──────▶│ PostgreSQL / Prisma │
+│ realtime sessions    │       └─────────────────────┘
+└──────┬───────────────┘
+       ├──────────────────────▶ Redis / BullMQ
+       └──────────────────────▶ Kokoro TTS service
+                                  worker_threads · ONNX CPU inference
+```
 
-The API container runs three things via `server/scripts/docker-start.sh`: it binds the HTTP port, applies Prisma migrations, then starts the BullMQ worker alongside the API process.
+| Component | Technology | Location |
+| --- | --- | --- |
+| Web application | Next.js 16, React 19, Tailwind CSS, TypeScript | [`web/`](web/) |
+| API | Express 5, TypeScript, Socket.IO | [`server/src/`](server/src/) |
+| TTS service | Express, `kokoro-js`, Kokoro-82M ONNX | [`server/server.js`](server/server.js) |
+| TTS worker | Node `worker_threads`, CPU ONNX inference | [`server/tts-worker.js`](server/tts-worker.js) |
+| Database | PostgreSQL, Prisma | [`server/prisma/`](server/prisma/) |
+| Jobs | Redis, BullMQ | [`server/src/queues/`](server/src/queues/) |
+| Parsing | Python, MarkItDown | [`server/src/services/python/`](server/src/services/python/) |
 
 ## Repository layout
 
-```
-web/               Next.js app (the frontend)
-server/            Express API, Prisma schema, BullMQ workers, Python parser
-  src/routes/      HTTP routes
-  src/socket/      Socket.IO realtime session handling
-  src/queues/      BullMQ queue definitions
-  src/workers/     Queue consumers
-  prisma/          Schema and migrations
-docker-compose.yml Local full stack (Postgres, Redis, API, web)
-render.yaml        Render blueprint for the API, Postgres and Key Value
-vercel.json        Vercel project config
-api_documentation.md
-task.md            MVP scope and task plan
+```text
+web/                    Next.js frontend
+server/src/routes/      HTTP route modules
+server/src/services/    AI, retrieval, storage, TTS, and domain services
+server/src/socket/      Socket.IO realtime session handling
+server/src/queues/      BullMQ queue definitions
+server/src/workers/     Background queue consumers
+server/prisma/          Database schema and migrations
+server/server.js        Standalone Kokoro TTS API
+server/tts-worker.js    Kokoro inference worker
+server/scripts/         Local and deployment scripts
+docker-compose.yml      Local PostgreSQL, Redis, and API stack
+render.yaml             Render blueprint for core API infrastructure
+api_documentation.md    HTTP API reference
 ```
 
-## Running locally
+## Requirements
 
-### With Docker (everything at once)
+- Node.js 20 or newer and npm.
+- PostgreSQL 16 or a compatible provider.
+- Redis 7 or a compatible provider.
+- Python 3 for document parsing.
+- API keys for the providers enabled in your environment.
+
+## Local development
+
+### Install dependencies
 
 ```bash
-cp .env.example .env     # fill in the keys; compose won't start with blanks
-docker compose up --build
+cd server && npm ci
+cd ../web && npm ci
 ```
 
-Web on http://localhost:3000, API on http://localhost:8000.
-
-### Manually
-
-You'll need PostgreSQL and Redis running, plus Python 3 for the document parser.
+### Configure the API
 
 ```bash
-# API
+cp server/.env.example server/.env
+```
+
+Fill in the database, authentication, Redis, LLM, embeddings, storage, and OAuth settings. Never commit `.env` or `.env.local` files.
+
+### Start the backend
+
+```bash
 cd server
-cp .env.example .env     # then fill in the values
-bun install
-bunx prisma migrate deploy
-bun run dev              # API only
-bun run worker:dev       # queue worker, separate terminal
+npm run dev:all
 ```
 
+This starts the API on `http://localhost:8000`, Kokoro TTS on `http://localhost:8125`, and the product worker. In a second terminal:
+
 ```bash
-# Web
 cd web
-cp .env.example .env.local   # set SESSION_SECRET (openssl rand -base64 48)
-npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-## Configuration
+Open [http://localhost:3000](http://localhost:3000).
 
-Copy `server/.env.example` to `server/.env` and fill it in. Nothing secret is committed — both `.env` files are gitignored.
+### Common commands
 
-**Required** (the server refuses to start without these):
+| Command | Purpose |
+| --- | --- |
+| `npm run dev:all` | Start API, product worker, and Kokoro TTS |
+| `npm run dev` | Start the API with Nodemon |
+| `npm run worker:dev` | Start the product worker only |
+| `npm run tts:start` | Start Kokoro TTS only |
+| `npm run build` | Type-check and build server declarations |
+| `npm run test` | Run server tests |
+| `npm run lint` | Run ESLint |
+| `npm run smoke:mvp` | Run the end-to-end MVP smoke flow |
 
-- `DATABASE_URL`
-- `JWT_SECRET`, `REFRESH_JWT_SECRET`, `SESSION_SECRET`
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — validated at import time by `src/config/google.config.ts`
+## Text-to-speech
 
-**Redis** — `REDIS_URL` is preferred and takes precedence. `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` remain as a local-development fallback.
+The bundled service loads `onnx-community/Kokoro-82M-v1.0-ONNX` once, warms the ONNX graph, and performs inference in a worker thread so CPU-bound speech generation does not block Express.
 
-**Optional** — `OPEN_ROUTER_APIKEY`, `UPLOADTHING_TOKEN`, `ARCJET_KEY`, the `EMAIL_*` block, and the STT/LLM provider settings. Empty strings are treated as unset.
+Local configuration:
 
-The frontend (`web/`) needs `SESSION_SECRET`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_PATH` and, optionally, `BACKEND_URL`. See `web/.env.example`.
-
-### Google OAuth
-
-Authorized redirect URIs:
-
+```env
+TTS_ENABLED=true
+TTS_PROVIDER=kokoro
+TTS_PORT=8125
+KOKORO_TTS_BASE_URL=http://localhost:8125
+TTS_MAX_CHARS=600
+TTS_TIMEOUT_MS=30000
+TTS_MAX_RETRIES=5
 ```
-https://feynman-api-dmzt.onrender.com/api/auth/google/callback
-http://localhost:8000/api/auth/google/callback
+
+Check the service:
+
+```bash
+curl http://localhost:8125/health
 ```
 
-## API surface
+Generate speech:
+
+```bash
+curl -X POST http://localhost:8125/api/tts \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Explain Newton’s second law.","voice":"af_heart"}' \
+  --output example.wav
+```
+
+The endpoint returns `audio/wav`, `Content-Length`, and processes one queued job at a time. Recent identical requests are cached.
+
+## API overview
 
 | Prefix | Purpose |
-|---|---|
-| `/api/auth` | Sign up, sign in, refresh, Google OAuth |
-| `/api/user` | User profile |
-| `/api/resources` | Upload and manage learning resources |
-| `/api/sessions` | Create, end and report on learning sessions |
-| `/api/analytics` | Session analytics |
+| --- | --- |
+| `/api/auth` | Password authentication, refresh, and Google OAuth |
+| `/api/user` | User profile operations |
+| `/api/resources` | Create, upload, and manage learning resources |
+| `/api/sessions` | Create, update, end, and report on sessions |
+| `/api/analytics` | Learning analytics |
 | `/api/parser` | Document parsing |
-| `/health` | Dependency health report |
+| `/api/tts` | Authenticated speech synthesis |
+| `/health` | API dependency health report |
+| `/ws` | Socket.IO realtime transport |
 
-Socket.IO runs at path `/ws` for live speaking sessions.
-
-Full reference: [`api_documentation.md`](api_documentation.md).
+See [`api_documentation.md`](api_documentation.md) for request and response examples.
 
 ## Deployment
 
-**API** — `render.yaml` is a Render blueprint defining the Docker web service, a Postgres database and a Key Value instance. `JWT_SECRET`, `REFRESH_JWT_SECRET` and `SESSION_SECRET` are generated by Render; third-party keys are marked `sync: false` and entered in the dashboard. Pushing to `main` redeploys.
+### Render
 
-**Web** — not deployed yet. `web/` is a Next.js app; when deploying (for example to Vercel), set its Root Directory to `web`, add the environment variables from `web/.env.example`, and point the API's `FRONTEND_URL` and `GOOGLE_CALLBACK_URL` at it.
+Deploy the API and Kokoro TTS as separate services.
 
-## Known limitations
+TTS service settings:
 
-These come from running on free tiers and are worth knowing before putting real users on it:
+```text
+Root Directory: server
+Build Command: npm ci
+Start Command: npm run tts:start
+Health Check Path: /health
+```
 
-- **The API sleeps after 15 minutes idle.** Cold start is roughly a minute, which drops live Socket.IO speaking sessions. An external uptime ping keeps it awake, but a free web service running 24/7 consumes nearly the entire 750 shared instance-hours per month.
-- **Sessions are stored in memory.** They don't survive a restart, so every deploy logs users out. Redis is already provisioned and would be the natural fix.
-- **Free Key Value forces `volatile-lru`**, not the `noeviction` policy BullMQ wants, so queued jobs can be evicted under memory pressure.
-- **`/health` is slow.** It fans out to seven dependency checks in parallel, which exceeds its 8-second ceiling on a 0.1-CPU instance. Render's health check therefore points at `/` instead.
+Let Render provide `PORT`; the TTS server binds to `0.0.0.0` and uses the injected port in production.
+
+API service variables:
+
+```env
+TTS_ENABLED=true
+TTS_PROVIDER=kokoro
+KOKORO_TTS_BASE_URL=https://YOUR-TTS-SERVICE.onrender.com
+TTS_MAX_RETRIES=5
+```
+
+Add secrets through the Render dashboard, never to Git. See the [Render Web Services documentation](https://render.com/docs/web-services).
+
+### Docker
+
+```bash
+docker compose up --build
+```
+
+The core API is exposed on port `8000`. Run the web application separately from [`web/`](web/).
+
+### Production frontend
+
+```bash
+cd web
+npm ci
+npm run build
+npm start
+```
+
+Configure `BACKEND_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_PATH`, and `SESSION_SECRET` from [`web/.env.example`](web/.env.example).
+
+## Security and operational notes
+
+- Keep `.env` files, OAuth secrets, database credentials, Redis URLs, and provider keys out of Git.
+- Rotate credentials immediately if they are accidentally exposed.
+- Free-tier services may sleep or cold-start, affecting the first request and long-lived WebSocket sessions.
+- Kokoro CPU inference requires sufficient memory and startup time; use a persistent disk or suitable Render plan if model downloads on every deploy are undesirable.
+- Redis eviction policies can affect BullMQ reliability under memory pressure.
+
+## Contributing
+
+1. Create a focused branch.
+2. Keep secrets out of commits.
+3. Run the relevant lint, type-check, and test commands.
+4. Update API or configuration documentation when behavior changes.
+5. Open a pull request with a concise summary and verification notes.
 
 ## License
 
-No license has been specified for this project.
+No license has been specified for this project yet.
