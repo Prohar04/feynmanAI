@@ -35,6 +35,35 @@ echo "Starting API server"
 bun --smol src/index.ts &
 api_pid=$!
 
+# Fail early with the API's actual startup error instead of allowing the
+# migration command below to hide it until Render's port scan times out.
+api_url="http://127.0.0.1:${PORT:-8000}/"
+api_ready=false
+for attempt in $(seq 1 60); do
+	if ! kill -0 "$api_pid" 2>/dev/null; then
+		echo "ERROR: API process exited before binding to ${api_url}"
+		wait "$api_pid"
+		exit 1
+	fi
+
+	if curl --silent --show-error --fail --max-time 1 "$api_url" >/dev/null 2>&1; then
+		api_ready=true
+		echo "API is listening on ${api_url}"
+		break
+	fi
+
+	sleep 1
+done
+
+if [[ "$api_ready" != true ]]; then
+	echo "ERROR: API did not respond on ${api_url} within 60 seconds"
+	if kill -0 "$api_pid" 2>/dev/null; then
+		kill "$api_pid" 2>/dev/null || true
+	fi
+	wait "$api_pid" || true
+	exit 1
+fi
+
 echo "Running database migrations"
 if bunx prisma migrate deploy; then
 	echo "Database migrations applied"
