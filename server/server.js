@@ -24,6 +24,7 @@ const SPEECH_CACHE_LIMIT = 32;
 let worker;
 let workerReady = false;
 let activeJob = null;
+let timedOutJobId = null;
 let shuttingDown = false;
 let restartTimer = null;
 
@@ -59,9 +60,13 @@ const processNextJob = () => {
   activeJob.timeout = setTimeout(() => {
     const timedOutJob = activeJob;
     activeJob = null;
+    timedOutJobId = timedOutJob.id;
     timedOutJob.reject(new Error('TTS generation timed out'));
+    // Do not terminate a worker while ONNX Runtime is executing native code.
+    // worker.terminate() during inference can crash onnxruntime-node with a
+    // Napi::Error. Keep the worker isolated from the queue until its current
+    // inference completes, then resume processing normally.
     workerReady = false;
-    void worker.terminate();
   }, JOB_TIMEOUT_MS);
 
   worker.postMessage({
@@ -83,7 +88,14 @@ const handleWorkerMessage = message => {
     return;
   }
 
-  if (!activeJob || message.id !== activeJob.id) return;
+  if (!activeJob || message.id !== activeJob.id) {
+    if (message.id === timedOutJobId && (message.type === 'result' || message.type === 'error')) {
+      timedOutJobId = null;
+      workerReady = true;
+      processNextJob();
+    }
+    return;
+  }
 
   const job = activeJob;
   activeJob = null;
