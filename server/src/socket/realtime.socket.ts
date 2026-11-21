@@ -82,14 +82,14 @@ export const registerRealtimeSocket = (io: Server) => {
     phase: 'start' | 'realtime' | 'end',
     content: string
   ) => {
-    // Do not emit the visible answer until its audio has been generated.
-    // The client can therefore render and play one synchronized response.
+    // Browser speech is the free production default. In that mode, emit the
+    // answer immediately and let the client speak the visible text locally.
     const text = extractSpeechText(content);
     let speech: {
       audioBase64: string;
       mimeType: string;
     } | null = null;
-    if (phase !== 'end') {
+    if (phase !== 'end' && env.TTS_PROVIDER !== 'browser') {
       try {
         const result = await synthesizeSpeech({ text });
         speech = {

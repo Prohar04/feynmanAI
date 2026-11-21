@@ -131,15 +131,16 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Text-to-speech
 
-Production uses hosted DashScope Qwen TTS so Render does not need to run CPU-bound ONNX inference. Kokoro remains available for local development through the bundled worker service.
+Production uses browser-native speech synthesis, so there is no TTS API key,
+model download, or CPU-bound inference on Render. Kokoro remains available for
+local development through the bundled worker service, and hosted DashScope is
+still supported as an optional server-audio provider.
 
 Local configuration:
 
 ```env
 TTS_ENABLED=true
-TTS_PROVIDER=dashscope
-QWEN_DASHSCOPE_URL=https://dashscope.aliyuncs.com/api/v1
-DASHSCOPE_API_KEY=your-dashscope-api-key
+TTS_PROVIDER=browser
 TTS_MAX_CHARS=600
 TTS_TIMEOUT_MS=30000
 TTS_MAX_RETRIES=5
@@ -155,7 +156,8 @@ Check the local Kokoro service:
 curl http://localhost:8125/health
 ```
 
-Generate speech:
+The browser speaks examiner questions automatically during voice sessions. The
+standalone endpoint below is only for the optional local Kokoro server:
 
 ```bash
 curl -X POST http://localhost:8125/api/tts \
@@ -186,22 +188,18 @@ See [`api_documentation.md`](api_documentation.md) for request and response exam
 
 ### Render
 
-Deploy only the API service for production TTS. The API calls DashScope directly,
-so Render does not need a separate Kokoro service or an ONNX runtime process.
+Deploy only the API service for production TTS. The browser speaks examiner
+questions locally, so Render does not need a separate Kokoro service, an ONNX
+runtime process, or a paid TTS API key.
 
 API service variables:
 
 ```env
 TTS_ENABLED=true
-TTS_PROVIDER=dashscope
-QWEN_DASHSCOPE_URL=https://dashscope.aliyuncs.com/api/v1
-DASHSCOPE_API_KEY=your-dashscope-api-key
+TTS_PROVIDER=browser
 ```
 
-Add `DASHSCOPE_API_KEY` through the Render dashboard, never to Git. Use the
-DashScope endpoint that matches the region of your API key. See the
-[Qwen TTS API reference](https://help.aliyun.com/en/model-studio/qwen-tts-api)
-and [Render Web Services documentation](https://render.com/docs/web-services).
+No TTS secret is required. See the [Render Web Services documentation](https://render.com/docs/web-services).
 
 ### Docker
 

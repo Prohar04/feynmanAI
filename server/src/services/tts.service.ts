@@ -2,7 +2,7 @@ import fetch, { type RequestInit, type Response } from 'node-fetch';
 import { env } from '#config/env.ts';
 import logger from '#config/logger.ts';
 
-export type TtsProvider = 'local' | 'kokoro' | 'dashscope';
+export type TtsProvider = 'browser' | 'local' | 'kokoro' | 'dashscope';
 export type TtsFormat = 'wav' | 'mp3';
 
 export type SynthesizeSpeechInput = {
@@ -408,7 +408,11 @@ export const synthesizeSpeech = async (
 
   const synthesis = (async () => {
     let result: SpeechResult;
-    if (provider === 'local') {
+    if (provider === 'browser') {
+      throw new TtsConfigurationError(
+        'Browser TTS is enabled; use a voice session in the web app for speech synthesis.'
+      );
+    } else if (provider === 'local') {
       result = await synthesizeLocal(validated);
     } else if (provider === 'kokoro') {
       result = await synthesizeKokoro(validated);

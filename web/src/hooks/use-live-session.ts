@@ -121,7 +121,10 @@ export function useLiveSession() {
 	const [muted, setMuted] = useState(false);
 	const [speechMuted, setSpeechMuted] = useState(false);
 	const [speechSupported] = useState(
-		() => typeof window !== "undefined" && typeof Audio !== "undefined",
+		() =>
+			typeof window !== "undefined" &&
+			"speechSynthesis" in window &&
+			"SpeechSynthesisUtterance" in window,
 	);
 	const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
 	const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
@@ -145,7 +148,7 @@ export function useLiveSession() {
 	const speechMutedRef = useRef(false);
 	const spokenQuestions = useRef(new Set<string>());
 	const currentQuestionRef = useRef<string | null>(null);
-	const pendingSpeech = useRef<{ question: string; audioBase64: string; mimeType: string } | null>(null);
+	const pendingSpeech = useRef<{ question: string; audioBase64?: string; mimeType?: string } | null>(null);
 
 	const setState = useCallback((next: LiveState) => {
 		stateRef.current = next;
@@ -170,6 +173,9 @@ export function useLiveSession() {
 	}, []);
 
 	const stopSpeech = useCallback(() => {
+		if (typeof window !== "undefined" && "speechSynthesis" in window) {
+			window.speechSynthesis.cancel();
+		}
 		speechAudioRef.current?.pause();
 		if (speechAudioRef.current) speechAudioRef.current.currentTime = 0;
 		if (speechUrlRef.current) URL.revokeObjectURL(speechUrlRef.current);
@@ -182,25 +188,32 @@ export function useLiveSession() {
 		currentQuestionRef.current = text || currentQuestionRef.current;
 		if (text) setCurrentQuestion(text);
 		if (!text || !force && spokenQuestions.current.has(text)) return;
-		if (audioBase64) pendingSpeech.current = { question: text, audioBase64, mimeType };
+		pendingSpeech.current = { question: text, audioBase64, mimeType };
 		// Keep the question pending until speech support has been detected. The
 		// opening examiner question can arrive immediately after the socket starts,
 		// before the capability-detection effect has run.
-		if (modeRef.current !== "voice" || speechMutedRef.current || !speechSupported || !audioBase64) return;
+		if (modeRef.current !== "voice" || speechMutedRef.current || !speechSupported) return;
 		spokenQuestions.current.add(text);
 		stopSpeech();
-		const bytes = Uint8Array.from(atob(audioBase64), (char) => char.charCodeAt(0));
-		const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
-		const audio = new Audio(url);
-		speechUrlRef.current = url;
-		speechAudioRef.current = audio;
-		audio.onended = stopSpeech;
-		void audio.play().catch(() => setError("The question could not be played. You can replay it or continue in text."));
+		if (audioBase64) {
+			const bytes = Uint8Array.from(atob(audioBase64), (char) => char.charCodeAt(0));
+			const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+			const audio = new Audio(url);
+			speechUrlRef.current = url;
+			speechAudioRef.current = audio;
+			audio.onended = stopSpeech;
+			void audio.play().catch(() => setError("The question could not be played. You can replay it or continue in text."));
+			return;
+		}
+
+		const utterance = new SpeechSynthesisUtterance(text);
+		utterance.onerror = () => setError("The question could not be spoken. You can replay it or continue in text.");
+		window.speechSynthesis.speak(utterance);
 	}, [speechSupported, stopSpeech]);
 
 	useEffect(() => {
 		const pending = pendingSpeech.current;
-		if (!speechSupported || modeRef.current !== "voice" || !pending || speechMutedRef.current) return;
+    if (!speechSupported || modeRef.current !== "voice" || !pending || speechMutedRef.current) return;
 		speakQuestion(pending.question, pending.audioBase64, pending.mimeType);
 	}, [speakQuestion, speechSupported]);
 
