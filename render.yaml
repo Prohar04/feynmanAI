@@ -91,6 +91,16 @@ services:
         value: groq
       - key: STT_MODEL
         value: whisper-large-v3-turbo
+      - key: TTS_PROVIDER
+        value: dashscope
+      - key: QWEN_DASHSCOPE_URL
+        value: https://dashscope.aliyuncs.com/api/v1
+      - key: TTS_ENABLED
+        value: true
+      - key: TTS_TIMEOUT_MS
+        value: 30000
+      - key: DASHSCOPE_API_KEY
+        sync: false
       - key: STORAGE_PROVIDER
         value: s3
       - key: S3_FORCE_PATH_STYLE

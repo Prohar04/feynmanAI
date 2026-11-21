@@ -123,7 +123,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run dev:all` | Start API, product worker, and Kokoro TTS |
 | `npm run dev` | Start the API with Nodemon |
 | `npm run worker:dev` | Start the product worker only |
-| `npm run tts:start` | Start Kokoro TTS only |
+| `npm run tts:start` | Start local Kokoro TTS only |
 | `npm run build` | Type-check and build server declarations |
 | `npm run test` | Run server tests |
 | `npm run lint` | Run ESLint |
@@ -131,21 +131,25 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Text-to-speech
 
-The bundled service loads `onnx-community/Kokoro-82M-v1.0-ONNX` once, warms the ONNX graph, and performs inference in a worker thread so CPU-bound speech generation does not block Express.
+Production uses hosted DashScope Qwen TTS so Render does not need to run CPU-bound ONNX inference. Kokoro remains available for local development through the bundled worker service.
 
 Local configuration:
 
 ```env
 TTS_ENABLED=true
-TTS_PROVIDER=kokoro
-TTS_PORT=8125
-KOKORO_TTS_BASE_URL=http://localhost:8125
+TTS_PROVIDER=dashscope
+QWEN_DASHSCOPE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_API_KEY=your-dashscope-api-key
 TTS_MAX_CHARS=600
 TTS_TIMEOUT_MS=30000
 TTS_MAX_RETRIES=5
 ```
 
-Check the service:
+For local Kokoro instead, set `TTS_PROVIDER=kokoro`, set
+`KOKORO_TTS_BASE_URL=http://localhost:8125`, and start the bundled service with
+`npm run tts:start`.
+
+Check the local Kokoro service:
 
 ```bash
 curl http://localhost:8125/health
@@ -182,29 +186,22 @@ See [`api_documentation.md`](api_documentation.md) for request and response exam
 
 ### Render
 
-Deploy the API and Kokoro TTS as separate services.
-
-TTS service settings:
-
-```text
-Root Directory: server
-Build Command: npm ci
-Start Command: npm run tts:start
-Health Check Path: /health
-```
-
-Let Render provide `PORT`; the TTS server binds to `0.0.0.0` and uses the injected port in production.
+Deploy only the API service for production TTS. The API calls DashScope directly,
+so Render does not need a separate Kokoro service or an ONNX runtime process.
 
 API service variables:
 
 ```env
 TTS_ENABLED=true
-TTS_PROVIDER=kokoro
-KOKORO_TTS_BASE_URL=https://YOUR-TTS-SERVICE.onrender.com
-TTS_MAX_RETRIES=5
+TTS_PROVIDER=dashscope
+QWEN_DASHSCOPE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_API_KEY=your-dashscope-api-key
 ```
 
-Add secrets through the Render dashboard, never to Git. See the [Render Web Services documentation](https://render.com/docs/web-services).
+Add `DASHSCOPE_API_KEY` through the Render dashboard, never to Git. Use the
+DashScope endpoint that matches the region of your API key. See the
+[Qwen TTS API reference](https://help.aliyun.com/en/model-studio/qwen-tts-api)
+and [Render Web Services documentation](https://render.com/docs/web-services).
 
 ### Docker
 
