@@ -679,7 +679,7 @@ export const generateSessionStartResponse = async (params: {
 
   const completion = await generateChatCompletion(
     messages,
-    { purpose: 'default', temperature: 0.3, maxTokens: 180 }
+    { purpose: 'realtime', temperature: 0.3, maxTokens: 180 }
   );
 
   const parsed = parseRealtimeFeedback(completion.content);

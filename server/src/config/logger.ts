@@ -18,6 +18,8 @@ export const redactSensitiveLogValue = (value: unknown, key = ''): unknown => {
   if (key === 'error' && value && typeof value === 'object') {
     const errorObject = value as {
       name?: unknown;
+      message?: unknown;
+      stack?: unknown;
       code?: unknown;
       status?: unknown;
       type?: unknown;
@@ -25,6 +27,12 @@ export const redactSensitiveLogValue = (value: unknown, key = ''): unknown => {
     };
     return {
       ...(typeof errorObject.name === 'string' ? { name: errorObject.name } : {}),
+      ...(typeof errorObject.message === 'string'
+        ? { message: redactString(errorObject.message) }
+        : {}),
+      ...(typeof errorObject.stack === 'string'
+        ? { stack: redactString(errorObject.stack) }
+        : {}),
       ...(typeof errorObject.code === 'string' ? { code: errorObject.code } : {}),
       ...(typeof errorObject.status === 'number'
         ? { status: errorObject.status }
