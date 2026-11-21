@@ -26,6 +26,8 @@ const DEFAULT_DASHSCOPE_MODEL = 'qwen3-tts-flash';
 const DEFAULT_MAX_CHARS = 600;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_KOKORO_READY_TIMEOUT_MS = 90_000;
+const KOKORO_READY_POLL_INTERVAL_MS = 2_000;
 const SPEECH_CACHE_LIMIT = 32;
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const speechCache = new Map<string, SpeechResult>();
@@ -186,6 +188,41 @@ const requestAudioBytes = async (url: string): Promise<Buffer> => {
   return Buffer.from(await response.arrayBuffer());
 };
 
+const waitForKokoroReady = async (baseUrl: string): Promise<void> => {
+  const configuredTimeout = env.TTS_TIMEOUT_MS && env.TTS_TIMEOUT_MS > 0
+    ? Math.floor(env.TTS_TIMEOUT_MS)
+    : DEFAULT_KOKORO_READY_TIMEOUT_MS;
+  const deadline = Date.now() + configuredTimeout;
+
+  while (Date.now() < deadline) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+
+    try {
+      const response = await fetch(`${baseUrl}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+
+      if (response.ok) {
+        const payload = (await response.json()) as { status?: string };
+        if (payload.status === 'ready') return;
+      }
+    } catch {
+      // Render may still be waking the TTS service. Continue polling.
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    await sleep(KOKORO_READY_POLL_INTERVAL_MS);
+  }
+
+  throw new TtsProviderError(
+    'Kokoro TTS worker did not become ready before the request timeout',
+    503
+  );
+};
+
 const synthesizeLocal = async (
   input: ReturnType<typeof validateInput>
 ): Promise<SpeechResult> => {
@@ -244,6 +281,7 @@ const synthesizeKokoro = async (
   );
   let response: Response;
   try {
+    await waitForKokoroReady(baseUrl);
     response = await requestWithRetry(`${baseUrl}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
